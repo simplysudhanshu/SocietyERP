@@ -1,0 +1,16 @@
+members : 
+
+flat TEXT PRIMARY KEY NOT NULL
+name TEXT NOT NULL
+current TEXT NOT NULL
+contact NUMBER NOT NULL
+email TEXT NOT NULL
+_________________________
+records :
+
+receipt_id TEXT PRIMARY KEY NOT NULL
+date TEXT NOT NULL
+flat TEXT NOT NULL
+amount REAL NOT NULL
+mode TEXT NOT NULL
+ref TEXT NOT NULL
