@@ -1,17 +1,18 @@
 import sys
 
 from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 from PyQt5.QtWidgets import (QApplication, QToolTip, QMainWindow,
                              QDesktopWidget, QMessageBox)
 
-import widget_classes
+import widgets_home
 
 
 class Example(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.home = widget_classes.home(self)
+        self.home = widgets_home.center_widget(self)
 
         self.initUI()
 
