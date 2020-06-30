@@ -285,8 +285,8 @@ class finance_entry(QWidget):
                             f"Fee for : {str(self.month_combo.currentText())}{fee_till}\n" \
                             f"Flat No : {str(self.flat_combo.currentText())}\n" \
                             f"Amount : {float(self.amount_line.text())}\n" \
-                            f"Fine : {float(self.fine_line.text())}\n" \
-                            f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n" \
+                            f"Fine : {float(self.fine_line.text())}\n\n" \
+                            f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n\n" \
                             f"Payment Mode : {str(self.mode_combo.currentText())}{ref}"
 
             reply.setWindowTitle("SUCCESSFUL ENTRY")
