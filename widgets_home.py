@@ -7,6 +7,7 @@ from datetime import date
 from tools import create_spacer_item
 import marathi
 from widgets_finance_entry import finance_entry
+from widgets_finance_search import finance_search
 
 
 flats = [f"A - {str(x)}" for x in range(1, 23)]
@@ -90,6 +91,7 @@ class center_widget(QWidget):
 
         # -- BUTTONS FUNCTIONS:
         self.home_add_entry_button.clicked.connect(lambda: self.show_Finance_entry())
+        self.home_search_entry_button.clicked.connect(lambda: self.show_Finance_search())
 
         # -- LAUNCHING HOME PAGE:
         self.deploy_home()
@@ -180,6 +182,21 @@ class center_widget(QWidget):
         finance_entry_layout.addWidget(finance_entry_object)
 
         finance_entry_group = QGroupBox("NEW TRANSACTION ENTRY")
+        finance_entry_group.setLayout(finance_entry_layout)
+
+        self.grid.addWidget(finance_entry_group, 2, 0, 2, 3)
+        self.active_widget = finance_entry_group
+
+    def show_Finance_search(self):
+        for item in self.home:
+            item.hide()
+
+        finance_entry_object = finance_search(self)
+
+        finance_entry_layout = QVBoxLayout()
+        finance_entry_layout.addWidget(finance_entry_object)
+
+        finance_entry_group = QGroupBox("SEARCH ENTRY")
         finance_entry_group.setLayout(finance_entry_layout)
 
         self.grid.addWidget(finance_entry_group, 2, 0, 2, 3)

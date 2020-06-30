@@ -1,8 +1,7 @@
 import sys
 
 from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import (QApplication, QToolTip, QMainWindow,
+from PyQt5.QtWidgets import (QApplication, QMainWindow,
                              QDesktopWidget, QMessageBox)
 
 import widgets_home
@@ -17,8 +16,6 @@ class Example(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        QToolTip.setFont(QFont('SansSerif', 10))
-
         self.resize(1550, 950)
         self.setWindowTitle('SMGRP - II')
         self.setWindowIcon(QIcon('icon.png'))
@@ -26,11 +23,10 @@ class Example(QMainWindow):
 
         self.setCentralWidget(self.home)
         self.statusBar().showMessage('Ready')
-        self.setToolTip('This is a <b>QWidget</b> widget')
 
         self.setStyleSheet("background-color: white; font: 10pt Arial")
 
-        self.show()
+        self.showMaximized()
 
     def center(self):
         qr = self.frameGeometry()

@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton,\
-    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox
+from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
+    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QCalendarWidget
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
@@ -7,11 +7,11 @@ from datetime import datetime
 
 import receipt
 import db_tools
-from tools import create_spacer_item, fix_date, get_name
+from tools import create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine
 
 flats = [f"A - {str(x)}" for x in range(1, 23)]
-months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-          'August', 'September', 'October', 'November', 'December']
+full_months = ("January", 'February', 'March', 'April', 'May', 'June', 'July',
+               'August', 'September', 'October', 'November', 'December')
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -37,6 +37,9 @@ class finance_entry(QWidget):
         super().__init__(parent)
 
         intValidator = QIntValidator()
+        self.setStyleSheet(QSS)
+        self.current_pending_months = []
+        self.current_advance_months = []
 
         # -- LEVEL TWO GRID
         self.grid = QGridLayout()
@@ -84,11 +87,11 @@ class finance_entry(QWidget):
         # -- CELL ONE
         self.date_label = QLabel("DATE OF TRANSACTION :")
         self.date_label.setWordWrap(True)
+
         self.date_line = QDateEdit()
         self.date_line.setCalendarPopup(True)
         self.date_line.setDate(QDate.currentDate())
-
-        self.setStyleSheet(QSS)
+        self.date_line.setDisplayFormat("dd MMMM, yyyy")
 
         self.single_radio = QRadioButton("Single Month")
         self.multiple_radio = QRadioButton("Multiple Months")
@@ -106,19 +109,16 @@ class finance_entry(QWidget):
         # ---
         self.month_label = QLabel("FEES FOR :")
         self.month_combo = QComboBox()
-        model = self.month_combo.model()
+        self.set_pending_months()
 
-        for month in months:
-            model.appendRow(QStandardItem(month))
         self.month_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
 
         # ---
         self.month_till_label = QLabel("FEES TILL :")
         self.month_till_combo = QComboBox()
-        model = self.month_till_combo.model()
 
-        for month in months:
-            model.appendRow(QStandardItem(month))
+        self.set_advance_months()
+
         self.month_till_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
 
         self.finance_entry_layout1_h2 = QHBoxLayout()
@@ -133,14 +133,17 @@ class finance_entry(QWidget):
         # ---
         self.amount_label = QLabel("AMOUNT :")
         self.amount_line = QLineEdit()
+        self.amount_line.setText("0")
 
         self.amount_line.setValidator(intValidator)
 
         # ---
         self.fine_label = QLabel("FINE :")
         self.fine_line = QLineEdit()
+        self.fine_line.setText("0")
 
         self.fine_line.setValidator(intValidator)
+        self.fine_line.setStyleSheet("border: 1px solid red; color: red")
 
         self.finance_entry_layout1_h3 = QHBoxLayout()
         self.finance_entry_layout1_h3.addWidget(self.amount_line)
@@ -176,6 +179,9 @@ class finance_entry(QWidget):
         self.ref_label.setDisabled(True)
         self.ref_line.setDisabled(True)
 
+        self.total_label = QLabel(f"TOTAL PAYABLE AMOUNT : {int(self.amount_line.text()) + int(self.fine_line.text())}")
+        self.total_label.setAlignment(Qt.AlignCenter)
+
         self.save_button = QPushButton("SAVE")
         self.save_button.setStyleSheet("font: bold")
         self.save_button.clicked.connect(lambda: self.check_form())
@@ -184,7 +190,8 @@ class finance_entry(QWidget):
         self.finance_entry_layout2 = QFormLayout()
         self.finance_entry_layout2.addRow(self.mode_label, self.mode_combo)
         self.finance_entry_layout2.addRow(self.ref_label, self.ref_line)
-        self.finance_entry_layout2.addItem(create_spacer_item(w=10, h=40))
+        self.finance_entry_layout2.addItem(create_spacer_item(w=10, h=30))
+        self.finance_entry_layout2.addRow(self.total_label)
         self.finance_entry_layout2.addRow(self.save_button)
         self.finance_entry_layout2.setVerticalSpacing(80)
 
@@ -196,6 +203,17 @@ class finance_entry(QWidget):
 
         self.finance_entry_group2 = QGroupBox()
         self.finance_entry_group2.setLayout(self.finance_entry_layout2)
+
+        # -- FUNCTIONALITY:
+        self.date_line.dateChanged.connect(lambda: self.set_pending_months(date=str(self.date_line.date().toPyDate())))
+
+        self.month_combo.currentIndexChanged['QString'].connect(self.set_advance_months)
+
+        self.month_combo.currentIndexChanged['QString'].connect(lambda ind: self.calculate_fine('from', ind))
+        self.month_till_combo.currentIndexChanged['QString'].connect(lambda ind: self.calculate_fine('till', ind))
+
+        self.amount_line.textChanged.connect(self.set_total)
+        self.fine_line.textChanged.connect(self.set_total)
 
         # -- FINANCE ENTRY GRID
         self.grid.addWidget(self.finance_entry_group0, 0, 0, 2, 1)
@@ -253,20 +271,35 @@ class finance_entry(QWidget):
             reply.exec_()
 
         else:
-            self.add_entry()
+            if self.month_till_combo.isEnabled():
+                fee_till = f" - {self.month_till_combo.currentText()}"
+            else:
+                fee_till = ''
+
+            if self.ref_line.isEnabled():
+                ref = f" - ({self.ref_line.text()})"
+            else:
+                ref = ''
+
+            detailed_text = f"Date : {fix_date(str(self.date_line.date().toPyDate()))}\n" \
+                            f"Fee for : {str(self.month_combo.currentText())}{fee_till}\n" \
+                            f"Flat No : {str(self.flat_combo.currentText())}\n" \
+                            f"Amount : {float(self.amount_line.text())}\n" \
+                            f"Fine : {float(self.fine_line.text())}\n" \
+                            f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n" \
+                            f"Payment Mode : {str(self.mode_combo.currentText())}{ref}"
 
             reply.setWindowTitle("SUCCESSFUL ENTRY")
             reply.setIcon(QMessageBox.Information)
-            reply.setText("Entry has been recorded.")
-            reply.setInformativeText("The entries can still be edited from the 'search' section.")
-            reply.setDetailedText("Receipts for all entries will be sent to the members via their registered Email IDs at the end of session.")
-            reply.setStandardButtons(QMessageBox.Ok)
-            reply.exec_()
+            reply.setText("ENTRY HAS BEEN RECORDED.\n")
+            reply.setInformativeText("Please confirm the details below.")
+            reply.setDetailedText(detailed_text)
+            confirm_button = reply.addButton('Confirm', QMessageBox.AcceptRole)
+            edit_button = reply.addButton('Edit', QMessageBox.RejectRole)
 
-            self.name_value.clear()
-            self.amount_line.clear()
-            self.fine_line.clear()
-            self.ref_line.clear()
+            confirm_button.clicked.connect(lambda: self.final_clicked(button=confirm_button))
+            edit_button.clicked.connect(lambda: self.final_clicked(button=edit_button))
+            reply.exec_()
 
     def set_name(self, flat):
         name = get_name(flat)
@@ -291,5 +324,103 @@ class finance_entry(QWidget):
         else:
             ref = ''
 
-        new_receipt = receipt.receipt(date=fix_date(date), flat=flat, month=fee_month, month_till=fee_till, amount=amount, fine=fine, mode=mode, ref=ref)
+        new_receipt = receipt.receipt(date=fix_date(date), flat=flat, month=fee_month, month_till=fee_till,
+                                      amount=amount, fine=fine, mode=mode, ref=ref)
         new_receipt.add_to_db()
+
+    def final_clicked(self, button):
+        if button.text() == "Confirm":
+            self.add_entry()
+
+            currentReceipt = db_tools.generate_receipt_id(str(datetime.now().month), str(datetime.now().year))
+            self.receipt_id.setText(currentReceipt)
+            self.flat_combo.setCurrentIndex(0)
+            self.name_value.setText("Mr D. S. Patil")
+            self.amount_line.setText('0')
+            self.fine_line.setText('0')
+            self.ref_line.clear()
+
+    def set_pending_months(self, date: str = None):
+        if date is None:
+            date = str(self.date_line.date().toPyDate())
+
+        months = calculate_months(month=date, pending=True, advance=False)
+
+        self.current_pending_months = months
+
+        self.month_combo.clear()
+
+        model = self.month_combo.model()
+        for month in months:
+            model.appendRow(QStandardItem(month))
+
+    def set_advance_months(self, date: str = None):
+        if date is None or date == '':
+            date = fix_date_back(self.current_pending_months[0])
+        else:
+            date = fix_date_back(date)
+
+        months = calculate_months(month=date, pending=False, advance=True)
+
+        self.current_advance_months = months
+
+        self.month_till_combo.clear()
+        model = self.month_till_combo.model()
+
+        for month in months:
+            model.appendRow(QStandardItem(month))
+
+    def calculate_fine(self, from_where: str, month):
+        if month == '' and self.month_combo.count() == 0 or self.month_till_combo.count() == 0:
+            self.fine_line.setText('0')
+            return
+
+        else:
+            if self.month_till_combo.isEnabled():
+                try:
+                    till_index = self.current_pending_months.index(str(self.month_till_combo.currentText()))
+                except ValueError:
+                    till_index = 0
+            else:
+                try:
+                    till_index = self.current_pending_months.index(str(self.month_combo.currentText()))
+                except ValueError:
+                    self.fine_line.setText('0')
+                    return
+
+            try:
+                from_index = self.current_pending_months.index(str(self.month_combo.currentText()))
+            except ValueError:
+                self.fine_line.setText('0')
+                return
+
+            all_fine_months = []
+
+            for month in self.current_pending_months[till_index:from_index+1]:
+                all_fine_months.append([month])
+
+            transact_date = str(self.date_line.date().toPyDate())
+
+            total_fine = 0
+            for month in all_fine_months:
+                fine = calculate_fine(month=month[0], transact_date=fix_date(transact_date))
+                month = month.append(fine)
+
+                total_fine += fine*50
+
+            self.amount_line.setText(str(len(all_fine_months)*1500))
+            self.amount_line.setToolTip(f"Total months : {len(all_fine_months)}")
+
+            self.fine_line.setText(str(total_fine))
+            self.set_fine_tip(all_fine_months=all_fine_months)
+
+    def set_fine_tip(self, all_fine_months: list):
+        tool_line = ''
+
+        for month in all_fine_months:
+            tool_line += f"{month[0]} x {month[1]}\n"
+
+        self.fine_line.setToolTip(tool_line)
+
+    def set_total(self):
+        self.total_label.setText(f"TOTAL PAYABLE AMOUNT : {int(self.amount_line.text()) + int(self.fine_line.text())}")
