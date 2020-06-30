@@ -1,8 +1,19 @@
+import os
 import sqlite3 as sq
+import csv
+import time
 
 
 def create_connection():
     return sq.connect("apartment")
+
+
+def fix_date_back(month: str):
+    if month == '':
+        return "-"
+    else:
+        month_combo_value = month.split(" '")
+        return f"{month_combo_value[0]}/{month_combo_value[1]}"
 
 
 def generate_receipt_id(month: str, year: str):
@@ -24,7 +35,7 @@ def generate_receipt_id(month: str, year: str):
             if int(last_id) > max_id:
                 max_id = int(last_id)
 
-    return f"{month}.{year}/{max_id+1}"
+    return f"{month}.{year}/{max_id + 1}"
 
 
 def add_to_db(table: str, attributes: list):
@@ -38,8 +49,9 @@ def add_to_db(table: str, attributes: list):
         split_date = attributes[0].split("/")
         receipt_id = generate_receipt_id(month=split_date[1], year=split_date[2])
 
-        query = f"INSERT INTO records VALUES ('{receipt_id}', '{attributes[0]}', '{attributes[1]}', '{attributes[2]}', " \
-                f"'{attributes[3]}', {attributes[4]}, {attributes[5]}, '{attributes[6]}', '{attributes[7]}');"
+        query = f"INSERT INTO records VALUES ('{receipt_id}', '{attributes[0]}', '{attributes[1]}', " \
+                f"'{fix_date_back(attributes[2])}','{fix_date_back(attributes[3])}', {attributes[4]}, {attributes[5]}, " \
+                f"'{attributes[6]}', '{attributes[7]}');"
 
     try:
         conn.execute(query)
@@ -123,14 +135,17 @@ def get_statement(date: str = None, flat: str = None, month: str = None):
     query = ''
 
     if date is not None:
-        query = "SELECT r.receipt_id, r.flat, m.name, r.amount, r.mode FROM records r, members m WHERE " \
+        query = "SELECT r.receipt_id, r.flat, m.name, r.fee_month, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE " \
                 f"r.flat = m.flat AND r.date = '{date}';"
 
     elif flat is not None:
-        query = f"SELECT receipt_id, date, amount, mode, ref FROM records WHERE flat = '{flat}';"
+        query = "SELECT receipt_id, date, fee_month, amount, fine, mode, ref FROM records WHERE " \
+                f"flat = '{flat}';"
 
     elif month is not None:
-        query = "SELECT r.receipt_id, r.date, r.flat, m.name, r.amount, r.mode, r.ref FROM records r, members m WHERE " \
+        if len(month) == 1:
+            month = f"0{int(month)+1}"
+        query = "SELECT r.receipt_id, r.date, r.flat, m.name, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE " \
                 f"r.flat = m.flat AND r.date LIKE '%/{month}/%';"
 
     try:
@@ -145,8 +160,42 @@ def get_statement(date: str = None, flat: str = None, month: str = None):
         return output
 
 
+def generate_csv():
+    conn = create_connection()
+    conn.text_factory = str
+
+    user = os.environ['USERPROFILE']
+    path = user + '\\Desktop\\SocietyERP'
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    cur_members = conn.cursor()
+    cur_records = conn.cursor()
+
+    data_members = cur_members.execute("SELECT * FROM members")
+    data_records = cur_records.execute(
+        "SELECT r.receipt_id, r.date, r.flat, m.name, r.fee_month, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE r.flat = m.flat")
+
+    with open(
+            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}_members.csv',
+            'w') as f_member:
+        writer = csv.writer(f_member)
+        writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
+        writer.writerows(data_members)
+
+    with open(
+            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}_records.csv',
+            'w') as f_records:
+        writer = csv.writer(f_records)
+        writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
+        print(data_records)
+        writer.writerows(data_records)
+    return f_member.name, f_records.name
+
+
 # PLAY :
 
+# print(generate_csv())
 # connection = create_connection()
 
 # connection.execute("CREATE TABLE members (flat TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, current TEXT NOT NULL, "
@@ -182,8 +231,10 @@ def get_statement(date: str = None, flat: str = None, month: str = None):
 #     print(row)
 
 # cursor2 = connection.execute("SELECT * FROM records")
-# print(list(cursor2))
-
+# cursor2 = connection.execute("SELECT * FROM records WHERE flat = 'A - 9' ORDER BY 2 DESC")
+#
+# for row in cursor2:
+#     print(row)
 
 '''
 Populating the database:
