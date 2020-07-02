@@ -3,6 +3,8 @@ import sqlite3 as sq
 import csv
 import time
 
+flats = [f"A - {str(x)}" for x in range(1, 23)]
+
 
 def create_connection():
     return sq.connect("apartment")
@@ -135,17 +137,17 @@ def get_statement(date: str = None, flat: str = None, month: str = None):
     query = ''
 
     if date is not None:
-        query = "SELECT r.receipt_id, r.flat, m.name, r.fee_month, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE " \
+        query = "SELECT r.receipt_id, r.flat, m.name, r.fee_month, r.fee_till, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE " \
                 f"r.flat = m.flat AND r.date = '{date}';"
 
     elif flat is not None:
-        query = "SELECT receipt_id, date, fee_month, amount, fine, mode, ref FROM records WHERE " \
+        query = "SELECT receipt_id, date, fee_month, fee_till, amount, fine, mode, ref FROM records WHERE " \
                 f"flat = '{flat}';"
 
     elif month is not None:
         if len(month) == 1:
-            month = f"0{int(month)+1}"
-        query = "SELECT r.receipt_id, r.date, r.flat, m.name, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE " \
+            month = f"0{int(month) + 1}"
+        query = "SELECT r.receipt_id, r.date, r.flat, m.name, r.fee_month, r.fee_till, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE " \
                 f"r.flat = m.flat AND r.date LIKE '%/{month}/%';"
 
     try:
@@ -188,21 +190,74 @@ def generate_csv():
             'w') as f_records:
         writer = csv.writer(f_records)
         writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
-        print(data_records)
         writer.writerows(data_records)
     return f_member.name, f_records.name
 
 
+def get_members_stats():
+    conn = create_connection()
+    output_records = []
+    output_members = []
+
+    for flat in flats:
+        query = f"SELECT m.flat, m.name, r.fee_month, r.fee_till FROM members m, records r WHERE r.flat = m.flat AND " \
+                f"r.flat = '{flat}' ORDER BY r.receipt_id DESC LIMIT 1;"
+
+        try:
+            cursor = conn.execute(query)
+            for row in cursor:
+                output_records.append(list(row))
+
+        except sq.Error as e:
+            print(e)
+            continue
+
+    query = "SELECT flat, name FROM members;"
+
+    try:
+        cursor = conn.execute(query)
+        for row in cursor:
+            output_members.append(list(row))
+
+    except sq.Error as e:
+        print(e)
+
+    for member_details in output_members:
+        for record_details in output_records:
+            if member_details[0] == record_details[0]:
+                member_details.extend(record_details[2:])
+                output_records.remove(record_details)
+                break
+
+    for member_details in output_members:
+        if len(member_details) == 2:
+            member_details.extend(["-", "-"])
+
+    return output_members
+
+
+def get_funds_stats(month: int):
+    conn = create_connection()
+    total_funds = 0
+
+    query = f"SELECT amount, fine FROM records WHERE receipt_id LIKE '%{month}.2%';"
+
+    cursor = conn.execute(query)
+    for row in cursor:
+        total_funds += (int(row[0]) + int(row[1]))
+
+    return total_funds
+
+
 # PLAY :
 
-# print(generate_csv())
 # connection = create_connection()
 
 # connection.execute("CREATE TABLE members (flat TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, current TEXT NOT NULL, "
 #                    "contact NUMBER NOT NULL, email TEXT NOT NULL);")
 
 # connection.execute("CREATE TABLE records (receipt_id TEXT PRIMARY KEY NOT NULL, date TEXT NOT NULL, flat TEXT NOT NULL, fee_month TEXT NOT NULL, fee_till TEXT, "
-#                    "amount REAL NOT NULL, fine READ NOT NULL, mode TEXT NOT NULL, ref TEXT);")
+#                    "amount REAL NOT NULL, fine REAL NOT NULL, mode TEXT NOT NULL, ref TEXT);")
 
 # connection.execute("DELETE FROM members;")
 # connection.execute("DELETE FROM records;")
@@ -225,6 +280,10 @@ def generate_csv():
 # print(get_from_db(table="members", attribute="name", key="flat", value="A - 1"))
 
 # print(get_receipts(month="06"))
+
+# print(get_funds_stats(month=7))
+
+# print(generate_csv())
 
 # cursor1 = connection.execute("SELECT * FROM members;")
 # for row in cursor1:
