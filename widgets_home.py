@@ -4,10 +4,12 @@ from PyQt5.QtCore import *
 
 from datetime import date
 
-from tools import create_spacer_item
+from tools import create_spacer_item, get_home_stats
 import marathi
+
 from widgets_finance_entry import finance_entry
 from widgets_finance_search import finance_search
+from widgets_stats import stats
 
 
 flats = [f"A - {str(x)}" for x in range(1, 23)]
@@ -72,8 +74,16 @@ class center_widget(QWidget):
         self.grid.addWidget(self.home_finance_group, 2, 1)
 
         # -- HOME STATS PANEL:
-        self.home_current_stats_label = QLabel(f"Monthly Fee Status ({current_month}) : 10 received, 12 pending.")
-        self.home_current_collection_label = QLabel(f"Monthly Collection ({current_month}) : 1000 INR.")
+        stats_content = get_home_stats()
+
+        self.home_current_stats_label = QLabel()
+        stats_label = f"Monthly Fee Status ({current_month}) : {stats_content['received']} received, {stats_content['pending']} pending."
+        self.home_current_stats_label.setText(stats_label)
+
+        self.home_current_collection_label = QLabel()
+        funds_label = f"Monthly Collection ({current_month}) : {stats_content['funds']} INR."
+        self.home_current_collection_label.setText(funds_label)
+
         self.home_stats_button = QPushButton("Get Detailed Statistics")
 
         self.home_stats_layout = QVBoxLayout()
@@ -92,6 +102,7 @@ class center_widget(QWidget):
         # -- BUTTONS FUNCTIONS:
         self.home_add_entry_button.clicked.connect(lambda: self.show_Finance_entry())
         self.home_search_entry_button.clicked.connect(lambda: self.show_Finance_search())
+        self.home_stats_button.clicked.connect(lambda: self.show_Stats())
 
         # -- LAUNCHING HOME PAGE:
         self.deploy_home()
@@ -139,6 +150,7 @@ class center_widget(QWidget):
         home_button.setIconSize(QSize(30, 30))
         home_button.setFixedSize(50, 50)
 
+        home_button.clicked.connect(lambda: self.get_latest_stats())
         home_button.clicked.connect(lambda: self.show_home())
 
         home_button_layout_h = QHBoxLayout()
@@ -191,16 +203,31 @@ class center_widget(QWidget):
         for item in self.home:
             item.hide()
 
-        finance_entry_object = finance_search(self)
+        finance_search_object = finance_search(self)
 
-        finance_entry_layout = QVBoxLayout()
-        finance_entry_layout.addWidget(finance_entry_object)
+        finance_search_layout = QVBoxLayout()
+        finance_search_layout.addWidget(finance_search_object)
 
-        finance_entry_group = QGroupBox("SEARCH ENTRY")
-        finance_entry_group.setLayout(finance_entry_layout)
+        finance_search_group = QGroupBox("SEARCH ENTRY")
+        finance_search_group.setLayout(finance_search_layout)
 
-        self.grid.addWidget(finance_entry_group, 2, 0, 2, 3)
-        self.active_widget = finance_entry_group
+        self.grid.addWidget(finance_search_group, 2, 0, 2, 3)
+        self.active_widget = finance_search_group
+
+    def show_Stats(self):
+        for item in self.home:
+            item.hide()
+
+        stats_object = stats(self)
+
+        stats_layout = QVBoxLayout()
+        stats_layout.addWidget(stats_object)
+
+        stats_group = QGroupBox("STATISTICS")
+        stats_group.setLayout(stats_layout)
+
+        self.grid.addWidget(stats_group, 2, 0, 2, 3)
+        self.active_widget = stats_group
 
     def show_home(self):
         if self.active_widget is not None:
@@ -208,3 +235,10 @@ class center_widget(QWidget):
 
         for item in self.home:
             item.show()
+
+    def get_latest_stats(self):
+        current_month = date.today().strftime('%B')
+
+        stats_content = get_home_stats()
+        stats_label = f"Monthly Fee Status ({current_month}) : {stats_content['received']} received, {stats_content['pending']} pending."
+        self.home_current_stats_label.setText(stats_label)
