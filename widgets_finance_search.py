@@ -1,14 +1,9 @@
-from PyQt5.QtCore import QDate
-from PyQt5.QtGui import QStandardItem
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QDateEdit, QFormLayout, QPushButton, QGroupBox, \
     QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
 
-from db_tools import get_statement
-from tools import fix_date
-
-flats = [f"A - {str(x)}" for x in range(1, 23)]
-months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-          'August', 'September', 'October', 'November', 'December']
+from tools import flats, full_months, fix_date, get_name, get_search_content
 
 
 QSS = '''
@@ -27,20 +22,6 @@ QCalendarWidget QTableView
     background-color:white;
 }
 '''
-
-
-def get_search_content(search_by: str, search_attribute: str):
-    content = []
-    if search_by == "flat":
-        content = get_statement(flat=search_attribute)
-
-    elif search_by == "date":
-        content = get_statement(date=search_attribute)
-
-    elif search_by == "month":
-        content = get_statement(month=search_attribute)
-
-    return content
 
 
 class finance_search(QWidget):
@@ -66,8 +47,17 @@ class finance_search(QWidget):
 
         self.flat_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
 
+        self.name_label = QLabel("NAME :")
+        self.name_value = QLabel("Mr D. S. Patil")
+
+        self.name_label.setStyleSheet("font-size: 15px;")
+        self.name_value.setStyleSheet("font-size: 15px;")
+
+        self.flat_combo.currentIndexChanged['QString'].connect(self.set_name)
+
         self.finance_search_panel_0 = QFormLayout()
         self.finance_search_panel_0.addRow(self.flat_label, self.flat_combo)
+        self.finance_search_panel_0.addRow(self.name_label, self.name_value)
 
         self.finance_search_group_0 = QGroupBox("Search by Flat")
         self.finance_search_group_0.setLayout(self.finance_search_panel_0)
@@ -83,8 +73,13 @@ class finance_search(QWidget):
         self.date_line.setDate(QDate.currentDate())
         self.date_line.setDisplayFormat("dd MMMM, yyyy")
 
+        self.date_desc = QLabel("Records for all transactions done on this particular date.")
+        self.date_desc.setStyleSheet("font-size: 15px;")
+        self.date_desc.setWordWrap(True)
+
         self.finance_search_panel_1 = QFormLayout()
         self.finance_search_panel_1.addRow(self.date_label, self.date_line)
+        self.finance_search_panel_1.addRow(self.date_desc)
 
         self.finance_search_group_1 = QGroupBox("Search by Date")
         self.finance_search_group_1.setLayout(self.finance_search_panel_1)
@@ -97,12 +92,17 @@ class finance_search(QWidget):
         self.month_combo = QComboBox()
         model = self.month_combo.model()
 
-        for month in months:
+        for month in full_months:
             model.appendRow(QStandardItem(month))
         self.month_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
 
+        self.month_desc = QLabel("Records for all transactions done in this particular month.")
+        self.month_desc.setStyleSheet("font-size: 15px;")
+        self.month_desc.setWordWrap(True)
+
         self.finance_search_panel_2 = QFormLayout()
         self.finance_search_panel_2.addRow(self.month_label, self.month_combo)
+        self.finance_search_panel_2.addRow(self.month_desc)
 
         self.finance_search_group_2 = QGroupBox("Search by Month")
         self.finance_search_group_2.setLayout(self.finance_search_panel_2)
@@ -160,7 +160,7 @@ class finance_search(QWidget):
             search_by = "date"
 
         elif self.finance_search_group_2.isChecked():
-            header_labels = ["Receipt ID", "Date", "Flat", "Name", "Amount", "Fine", "Pay Mode", "Ref. No."]
+            header_labels = ["Receipt ID", "Date", "Flat", "Name", "Fee Month(s)", "Amount", "Fine", "Pay Mode", "Ref. No."]
             search_by = "month"
 
         else:
@@ -185,11 +185,18 @@ class finance_search(QWidget):
         self.finance_result_table.setColumnCount(column_count)
 
         self.finance_result_table.setHorizontalHeaderLabels(headers)
-
-        for index, row in enumerate(content):
-            for inner_index, row_content in enumerate(row):
-                self.finance_result_table.setItem(index, inner_index, QTableWidgetItem(str(row_content)))
-
         header = self.finance_result_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
+        for index, row in enumerate(content):
+            for inner_index, row_content in enumerate(row):
+                table_item = QTableWidgetItem(str(row_content))
+                table_item.setToolTip(str(row_content))
+
+                if 'A - ' in str(row_content):
+                    table_item.setTextAlignment(Qt.AlignCenter)
+                self.finance_result_table.setItem(index, inner_index, table_item)
+
+    def set_name(self, flat):
+        name = get_name(flat)
+        self.name_value.setText(str(name))
