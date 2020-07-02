@@ -7,11 +7,8 @@ from datetime import datetime
 
 import receipt
 import db_tools
-from tools import create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine
+from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine
 
-flats = [f"A - {str(x)}" for x in range(1, 23)]
-full_months = ("January", 'February', 'March', 'April', 'May', 'June', 'July',
-               'August', 'September', 'October', 'November', 'December')
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -82,7 +79,7 @@ class finance_entry(QWidget):
         self.finance_entry_layout0.addRow(self.receipt_label, self.receipt_id)
         self.finance_entry_layout0.addRow(self.flat_label, self.flat_combo)
         self.finance_entry_layout0.addRow(self.name_label, self.name_value)
-        self.finance_entry_layout0.setVerticalSpacing(80)
+        self.finance_entry_layout0.setVerticalSpacing(90)
 
         # -- CELL ONE
         self.date_label = QLabel("DATE OF TRANSACTION :")
@@ -104,7 +101,7 @@ class finance_entry(QWidget):
         self.finance_entry_layout1_h1.addWidget(self.date_line)
         self.finance_entry_layout1_h1.addWidget(self.single_radio)
         self.finance_entry_layout1_h1.addWidget(self.multiple_radio)
-        self.finance_entry_layout1_h1.setSpacing(30)
+        self.finance_entry_layout1_h1.setSpacing(90)
 
         # ---
         self.month_label = QLabel("FEES FOR :")
@@ -115,6 +112,7 @@ class finance_entry(QWidget):
 
         # ---
         self.month_till_label = QLabel("FEES TILL :")
+        self.month_till_label.setAlignment(Qt.AlignCenter)
         self.month_till_combo = QComboBox()
 
         self.set_advance_months()
@@ -125,20 +123,22 @@ class finance_entry(QWidget):
         self.finance_entry_layout1_h2.addWidget(self.month_combo)
         self.finance_entry_layout1_h2.addWidget(self.month_till_label)
         self.finance_entry_layout1_h2.addWidget(self.month_till_combo)
-        self.finance_entry_layout1_h2.setSpacing(30)
+        self.finance_entry_layout1_h2.setSpacing(90)
 
         self.month_till_label.setEnabled(False)
         self.month_till_combo.setEnabled(False)
 
         # ---
         self.amount_label = QLabel("AMOUNT :")
+        self.amount_label.setAlignment(Qt.AlignCenter)
         self.amount_line = QLineEdit()
-        self.amount_line.setText("0")
+        self.amount_line.setText("1500")
 
         self.amount_line.setValidator(intValidator)
 
         # ---
         self.fine_label = QLabel("FINE :")
+        self.fine_label.setAlignment(Qt.AlignCenter)
         self.fine_line = QLineEdit()
         self.fine_line.setText("0")
 
@@ -149,14 +149,14 @@ class finance_entry(QWidget):
         self.finance_entry_layout1_h3.addWidget(self.amount_line)
         self.finance_entry_layout1_h3.addWidget(self.fine_label)
         self.finance_entry_layout1_h3.addWidget(self.fine_line)
-        self.finance_entry_layout1_h3.setSpacing(30)
+        self.finance_entry_layout1_h3.setSpacing(90)
 
         # ---
         self.finance_entry_layout1 = QFormLayout()
         self.finance_entry_layout1.addRow(self.date_label, self.finance_entry_layout1_h1)
         self.finance_entry_layout1.addRow(self.month_label, self.finance_entry_layout1_h2)
         self.finance_entry_layout1.addRow(self.amount_label, self.finance_entry_layout1_h3)
-        self.finance_entry_layout1.setVerticalSpacing(80)
+        self.finance_entry_layout1.setVerticalSpacing(90)
 
         # -- CELL TWO
         self.mode_label = QLabel("PAYMENT MODE :")
@@ -180,6 +180,7 @@ class finance_entry(QWidget):
         self.ref_line.setDisabled(True)
 
         self.total_label = QLabel(f"TOTAL PAYABLE AMOUNT : {int(self.amount_line.text()) + int(self.fine_line.text())}")
+        self.total_label.setWordWrap(True)
         self.total_label.setAlignment(Qt.AlignCenter)
 
         self.save_button = QPushButton("SAVE")
@@ -190,7 +191,7 @@ class finance_entry(QWidget):
         self.finance_entry_layout2 = QFormLayout()
         self.finance_entry_layout2.addRow(self.mode_label, self.mode_combo)
         self.finance_entry_layout2.addRow(self.ref_label, self.ref_line)
-        self.finance_entry_layout2.addItem(create_spacer_item(w=10, h=30))
+        self.finance_entry_layout2.addItem(create_spacer_item(w=5, h=30))
         self.finance_entry_layout2.addRow(self.total_label)
         self.finance_entry_layout2.addRow(self.save_button)
         self.finance_entry_layout2.setVerticalSpacing(80)
@@ -203,6 +204,7 @@ class finance_entry(QWidget):
 
         self.finance_entry_group2 = QGroupBox()
         self.finance_entry_group2.setLayout(self.finance_entry_layout2)
+        self.finance_entry_group2.setFixedWidth(550)
 
         # -- FUNCTIONALITY:
         self.date_line.dateChanged.connect(lambda: self.set_pending_months(date=str(self.date_line.date().toPyDate())))
@@ -211,6 +213,9 @@ class finance_entry(QWidget):
 
         self.month_combo.currentIndexChanged['QString'].connect(lambda ind: self.calculate_fine('from', ind))
         self.month_till_combo.currentIndexChanged['QString'].connect(lambda ind: self.calculate_fine('till', ind))
+
+        self.month_combo.currentTextChanged.connect(self.calculate_amount)
+        self.month_till_combo.currentTextChanged.connect(self.calculate_amount)
 
         self.amount_line.textChanged.connect(self.set_total)
         self.fine_line.textChanged.connect(self.set_total)
@@ -229,6 +234,8 @@ class finance_entry(QWidget):
             elif button.text() == "Multiple Months":
                 self.month_till_label.setEnabled(True)
                 self.month_till_combo.setEnabled(True)
+
+        self.calculate_amount()
 
     def mode_selection(self, selection):
         if selection == "Cash":
@@ -285,8 +292,8 @@ class finance_entry(QWidget):
                             f"Fee for : {str(self.month_combo.currentText())}{fee_till}\n" \
                             f"Flat No : {str(self.flat_combo.currentText())}\n" \
                             f"Amount : {float(self.amount_line.text())}\n" \
-                            f"Fine : {float(self.fine_line.text())}\n\n" \
-                            f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n\n" \
+                            f"Fine : {float(self.fine_line.text())}\n" \
+                            f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n" \
                             f"Payment Mode : {str(self.mode_combo.currentText())}{ref}"
 
             reply.setWindowTitle("SUCCESSFUL ENTRY")
@@ -370,6 +377,29 @@ class finance_entry(QWidget):
         for month in months:
             model.appendRow(QStandardItem(month))
 
+    def calculate_amount(self):
+        if self.month_combo.count() == 0 or self.month_till_combo.count() == 0:
+            self.amount_line.setText('0')
+            return
+
+        else:
+            all_possible_months = self.current_advance_months.copy()
+            all_possible_months = all_possible_months[::-1]
+
+            all_possible_months.extend([x for x in self.current_pending_months if x not in self.current_advance_months])
+
+            if self.month_till_combo.isEnabled():
+                from_index = all_possible_months.index(self.month_combo.currentText())
+                till_index = all_possible_months.index(self.month_till_combo.currentText())
+
+                amount = (from_index - till_index + 1) * 1500
+
+            else:
+                amount = 1500
+
+            self.amount_line.setText(str(amount))
+            self.amount_line.setToolTip(f"Total months : {amount//1500}")
+
     def calculate_fine(self, from_where: str, month):
         if month == '' and self.month_combo.count() == 0 or self.month_till_combo.count() == 0:
             self.fine_line.setText('0')
@@ -408,9 +438,6 @@ class finance_entry(QWidget):
 
                 total_fine += fine*50
 
-            self.amount_line.setText(str(len(all_fine_months)*1500))
-            self.amount_line.setToolTip(f"Total months : {len(all_fine_months)}")
-
             self.fine_line.setText(str(total_fine))
             self.set_fine_tip(all_fine_months=all_fine_months)
 
@@ -423,4 +450,14 @@ class finance_entry(QWidget):
         self.fine_line.setToolTip(tool_line)
 
     def set_total(self):
-        self.total_label.setText(f"TOTAL PAYABLE AMOUNT : {int(self.amount_line.text()) + int(self.fine_line.text())}")
+        if len(self.amount_line.text()) > 0:
+            amount = int(self.amount_line.text())
+        else:
+            amount = 0
+
+        if len(self.fine_line.text()) > 0:
+            fine = int(self.fine_line.text())
+        else:
+            fine = 0
+
+        self.total_label.setText(f"TOTAL PAYABLE AMOUNT : {amount + fine}")
