@@ -34,6 +34,7 @@ class stats(QWidget):
         currency_content = f"FUNDS COLLECTED IN JULY : {stats_content['funds']} INR"
         self.currency_label.setText(currency_content)
         self.currency_label.setWordWrap(True)
+        self.currency_label.setAlignment(Qt.AlignCenter)
         self.currency_label.setStyleSheet("font: bold 10pt")
 
         self.funds_layout = QFormLayout()

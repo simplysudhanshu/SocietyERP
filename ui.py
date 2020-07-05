@@ -22,7 +22,7 @@ class Example(QMainWindow):
         self.center()
 
         self.setCentralWidget(self.home)
-        self.statusBar().showMessage('Ready')
+        self.statusBar().showMessage('SocietyERP')
 
         self.setStyleSheet("background-color: white; font: 10pt Arial")
 

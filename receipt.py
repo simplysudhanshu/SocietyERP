@@ -17,3 +17,8 @@ class receipt:
     def add_to_db(self):
         db_tools.add_to_db(table='records', attributes=[self.date, self.flat, self.month, self.month_till, self.amount,
                                                         self.fine, self.mode, self.ref])
+
+    def update_db(self, receipt_id: str):
+        db_tools.update_db(table='records', identifier=receipt_id,
+                           all_attributes=[self.date, self.flat, self.month, self.month_till, self.amount,
+                                           self.fine, self.mode, self.ref])
