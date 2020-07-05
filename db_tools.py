@@ -101,8 +101,9 @@ def update_db(table: str, identifier: str, all_attributes: list):
                 f"contact = {all_attributes[2]}, email = '{all_attributes[3].lower()}' WHERE flat = '{identifier}'"
 
     elif table == 'records':
-        query = f"UPDATE {table} SET date = '{all_attributes[0].lower()}', flat = '{all_attributes[1].lower()}', " \
-                f"amount = {all_attributes[2]}, mode = '{all_attributes[3].lower()}', ref = '{all_attributes[4].lower()}' " \
+        query = f"UPDATE {table} SET date = '{all_attributes[0].lower()}', flat = '{all_attributes[1]}', " \
+                f"fee_month = '{fix_date_back(all_attributes[2])}', fee_till = '{fix_date_back(all_attributes[3])}', amount = {all_attributes[4]}, " \
+                f"fine = {all_attributes[5]}, mode = '{all_attributes[6].lower()}', ref = '{all_attributes[7].lower()}' " \
                 f"WHERE receipt_id = '{identifier}'"
 
     try:
@@ -167,7 +168,7 @@ def generate_csv():
     conn.text_factory = str
 
     user = os.environ['USERPROFILE']
-    path = user + '\\Desktop\\SocietyERP'
+    path = user + '\\Desktop\\SocietyERP\\Excel Files'
     if not os.path.exists(path):
         os.makedirs(path)
 
@@ -191,10 +192,25 @@ def generate_csv():
         writer = csv.writer(f_records)
         writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
         writer.writerows(data_records)
+
+    with open(
+            f'C:\\Users\\Public\\Public SocietyERP-Config\\members_{time.strftime("%d-%m-%Y-%H%M")}.csv',
+            'w') as sf_member:
+        writer = csv.writer(sf_member)
+        writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
+        writer.writerows(data_members)
+
+    with open(
+            f'C:\\Users\\Public\\Public SocietyERP-Config\\records_{time.strftime("%d-%m-%Y-%H%M")}.csv',
+            'w') as sf_records:
+        writer = csv.writer(sf_records)
+        writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
+        writer.writerows(data_records)
+
     return f_member.name, f_records.name
 
 
-def get_members_stats():
+def get_members_stats(one_member: str = None):
     conn = create_connection()
     output_records = []
     output_members = []
@@ -202,6 +218,10 @@ def get_members_stats():
     for flat in flats:
         query = f"SELECT m.flat, m.name, r.fee_month, r.fee_till FROM members m, records r WHERE r.flat = m.flat AND " \
                 f"r.flat = '{flat}' ORDER BY r.receipt_id DESC LIMIT 1;"
+
+        if one_member is not None:
+            query = f"SELECT m.flat, m.name, r.fee_month, r.fee_till FROM members m, records r WHERE r.flat = m.flat AND " \
+                    f"r.flat = '{one_member}' ORDER BY r.receipt_id DESC LIMIT 1;"
 
         try:
             cursor = conn.execute(query)
@@ -211,6 +231,9 @@ def get_members_stats():
         except sq.Error as e:
             print(e)
             continue
+
+        if one_member is not None:
+            return output_records
 
     query = "SELECT flat, name FROM members;"
 
@@ -277,7 +300,8 @@ def get_funds_stats(month: int):
 # update_db(table="members", identifier="A-01", all_attributes=["Mr Patil", "Mr Patil", 1, "a@xyz"])
 
 # print(generate_receipt_id(month='6'))
-# print(get_from_db(table="members", attribute="name", key="flat", value="A - 1"))
+
+# print(get_from_db(table="records", attribute="*", key="receipt_id", value="07.2020/1"))
 
 # print(get_receipts(month="06"))
 

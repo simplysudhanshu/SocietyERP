@@ -193,7 +193,7 @@ class finance_search(QWidget):
                 table_item = QTableWidgetItem(str(row_content))
                 table_item.setToolTip(str(row_content))
 
-                if 'A - ' in str(row_content):
+                if 'A - ' in str(row_content) or inner_index == 0:
                     table_item.setTextAlignment(Qt.AlignCenter)
                 self.finance_result_table.setItem(index, inner_index, table_item)
 

@@ -1,14 +1,13 @@
-from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
-    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QCalendarWidget
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-
 from datetime import datetime
 
-import receipt
-import db_tools
-from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
+    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox
 
+import db_tools
+import receipt
+from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, payment_exists
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -273,6 +272,13 @@ class finance_entry(QWidget):
         elif self.ref_line.isEnabled() and len(self.ref_line.text()) == 0:
             reply.setIcon(QMessageBox.Warning)
             reply.setText("Please enter the REFERENCE INFORMATION for the transaction.")
+            reply.setStandardButtons(QMessageBox.Retry)
+            reply.setWindowTitle("INVALID ENTRY")
+            reply.exec_()
+
+        elif payment_exists(flat=self.flat_combo.currentText(), month=self.month_combo.currentText()):
+            reply.setIcon(QMessageBox.Warning)
+            reply.setText(f"This member ({self.flat_combo.currentText()}) has already paid the fees for the month of {self.month_combo.currentText()}")
             reply.setStandardButtons(QMessageBox.Retry)
             reply.setWindowTitle("INVALID ENTRY")
             reply.exec_()

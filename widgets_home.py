@@ -9,6 +9,7 @@ import marathi
 
 from widgets_finance_entry import finance_entry
 from widgets_finance_search import finance_search
+from widgets_finance_edit import finance_edit
 from widgets_stats import stats
 
 
@@ -51,6 +52,9 @@ class center_widget(QWidget):
         self.home_add_members_button = QPushButton("Add New Member")
         self.home_search_members_button = QPushButton("Search Member Details")
 
+        self.home_add_members_button.setEnabled(False)                                                                  # ENABLE AFTER FUNCTIONALITY
+        self.home_search_members_button.setEnabled(False)                                                               # ENABLE AFTER FUNCTIONALITY
+
         self.home_members_layout = QVBoxLayout()
         self.home_members_layout.addWidget(self.home_add_members_button)
         self.home_members_layout.addWidget(self.home_search_members_button)
@@ -63,10 +67,12 @@ class center_widget(QWidget):
         # -- HOME FINANCE PANEL:
         self.home_add_entry_button = QPushButton("&Add New Entry")
         self.home_search_entry_button = QPushButton("Search Records")
+        self.home_edit_entry_button = QPushButton("Edit Records")
 
         self.home_finance_layout = QVBoxLayout()
         self.home_finance_layout.addWidget(self.home_add_entry_button)
         self.home_finance_layout.addWidget(self.home_search_entry_button)
+        self.home_finance_layout.addWidget(self.home_edit_entry_button)
 
         self.home_finance_group = QGroupBox("Finance :")
         self.home_finance_group.setLayout(self.home_finance_layout)
@@ -102,6 +108,7 @@ class center_widget(QWidget):
         # -- BUTTONS FUNCTIONS:
         self.home_add_entry_button.clicked.connect(lambda: self.show_Finance_entry())
         self.home_search_entry_button.clicked.connect(lambda: self.show_Finance_search())
+        self.home_edit_entry_button.clicked.connect(lambda: self.show_Finance_edit())
         self.home_stats_button.clicked.connect(lambda: self.show_Stats())
 
         # -- LAUNCHING HOME PAGE:
@@ -213,6 +220,21 @@ class center_widget(QWidget):
 
         self.grid.addWidget(finance_search_group, 2, 0, 2, 3)
         self.active_widget = finance_search_group
+
+    def show_Finance_edit(self):
+        for item in self.home:
+            item.hide()
+
+        finance_entry_object = finance_edit(self)
+
+        finance_entry_layout = QVBoxLayout()
+        finance_entry_layout.addWidget(finance_entry_object)
+
+        finance_entry_group = QGroupBox("EDIT TRANSACTION ENTRY")
+        finance_entry_group.setLayout(finance_entry_layout)
+
+        self.grid.addWidget(finance_entry_group, 2, 0, 2, 3)
+        self.active_widget = finance_entry_group
 
     def show_Stats(self):
         for item in self.home:
