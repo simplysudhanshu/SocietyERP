@@ -457,7 +457,7 @@ class finance_entry(QWidget):
 
     def set_total(self):
         if len(self.amount_line.text()) > 0:
-            amount = int(self.amount_line.text())
+            amount = float(self.amount_line.text())
         else:
             amount = 0
 

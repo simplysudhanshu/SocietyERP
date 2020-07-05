@@ -1,14 +1,12 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
-    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QCalendarWidget
+    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QCalendarWidget, QInputDialog
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-from datetime import datetime
-
 import receipt
 import db_tools
-from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine
-
+from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, \
+    payment_exists
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -57,9 +55,6 @@ class finance_edit(QWidget):
         self.receipt_desc.setStyleSheet("font-size: 15px;")
         self.receipt_desc.setAlignment(Qt.AlignCenter)
         self.receipt_desc.setWordWrap(True)
-
-        currentMonth = datetime.now().month
-        currentYear = datetime.now().year
 
         # ---
         self.flat_label = QLabel("FLAT NO. :")
@@ -243,6 +238,7 @@ class finance_edit(QWidget):
         data = db_tools.get_from_db(table='records', attribute='*', key='receipt_id', value=receipt_id)
 
         if len(data) > 0:
+
             self.presetting = True
 
             data = data[0]
@@ -360,35 +356,45 @@ class finance_edit(QWidget):
             reply.exec_()
 
         else:
-            if self.month_till_combo.isEnabled():
-                fee_till = f" - {self.month_till_combo.currentText()}"
+            code, ok = QInputDialog().getText(self, "Security", "Enter the authentication code:")
+
+            if code == "0000" and ok:
+                if self.month_till_combo.isEnabled():
+                    fee_till = f" - {self.month_till_combo.currentText()}"
+                else:
+                    fee_till = ''
+
+                if self.ref_line.isEnabled():
+                    ref = f" - ({self.ref_line.text()})"
+                else:
+                    ref = ''
+
+                detailed_text = f"Date : {fix_date(str(self.date_line.date().toPyDate()))}\n" \
+                                f"Fee for : {str(self.month_combo.currentText())}{fee_till}\n" \
+                                f"Flat No : {str(self.flat_combo.currentText())}\n" \
+                                f"Amount : {float(self.amount_line.text())}\n" \
+                                f"Fine : {float(self.fine_line.text())}\n" \
+                                f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n" \
+                                f"Payment Mode : {str(self.mode_combo.currentText())}{ref}"
+
+                reply.setWindowTitle("SUCCESSFUL ENTRY")
+                reply.setIcon(QMessageBox.Information)
+                reply.setText("ENTRY HAS BEEN RECORDED.\n")
+                reply.setInformativeText("Please confirm the details below.")
+
+                reply.setDetailedText(detailed_text)
+                confirm_button = reply.addButton('Confirm', QMessageBox.AcceptRole)
+                edit_button = reply.addButton('Edit', QMessageBox.RejectRole)
+
+                confirm_button.clicked.connect(lambda: self.final_clicked(button=confirm_button))
+                edit_button.clicked.connect(lambda: self.final_clicked(button=edit_button))
+                reply.exec_()
+
             else:
-                fee_till = ''
-
-            if self.ref_line.isEnabled():
-                ref = f" - ({self.ref_line.text()})"
-            else:
-                ref = ''
-
-            detailed_text = f"Date : {fix_date(str(self.date_line.date().toPyDate()))}\n" \
-                            f"Fee for : {str(self.month_combo.currentText())}{fee_till}\n" \
-                            f"Flat No : {str(self.flat_combo.currentText())}\n" \
-                            f"Amount : {float(self.amount_line.text())}\n" \
-                            f"Fine : {float(self.fine_line.text())}\n" \
-                            f"    -> TOTAL : {str(int(self.amount_line.text()) + int(self.fine_line.text()))} <-\n" \
-                            f"Payment Mode : {str(self.mode_combo.currentText())}{ref}"
-
-            reply.setWindowTitle("SUCCESSFUL ENTRY")
-            reply.setIcon(QMessageBox.Information)
-            reply.setText("ENTRY HAS BEEN RECORDED.\n")
-            reply.setInformativeText("Please confirm the details below.")
-            reply.setDetailedText(detailed_text)
-            confirm_button = reply.addButton('Confirm', QMessageBox.AcceptRole)
-            edit_button = reply.addButton('Edit', QMessageBox.RejectRole)
-
-            confirm_button.clicked.connect(lambda: self.final_clicked(button=confirm_button))
-            edit_button.clicked.connect(lambda: self.final_clicked(button=edit_button))
-            reply.exec_()
+                reply.setIcon(QMessageBox.Critical)
+                reply.setText("Transaction cannot be edited without the valid code.")
+                reply.setWindowTitle("INVALID Code")
+                reply.exec_()
 
     def set_name(self, flat):
         name = get_name(flat)
@@ -430,7 +436,6 @@ class finance_edit(QWidget):
 
     def set_pending_months(self, date: str = None):
         if not self.presetting:
-
             if date is None:
                 date = str(self.date_line.date().toPyDate())
 
@@ -473,7 +478,8 @@ class finance_edit(QWidget):
                 all_possible_months = self.current_advance_months.copy()
                 all_possible_months = all_possible_months[::-1]
 
-                all_possible_months.extend([x for x in self.current_pending_months if x not in self.current_advance_months])
+                all_possible_months.extend(
+                    [x for x in self.current_pending_months if x not in self.current_advance_months])
 
                 if self.month_till_combo.isEnabled():
                     from_index = all_possible_months.index(self.month_combo.currentText())
@@ -485,7 +491,7 @@ class finance_edit(QWidget):
                     amount = 1500
 
                 self.amount_line.setText(str(amount))
-                self.amount_line.setToolTip(f"Total months : {amount//1500}")
+                self.amount_line.setToolTip(f"Total months : {amount // 1500}")
 
     def calculate_fine(self, from_where: str, month):
         if not self.presetting:
@@ -515,7 +521,7 @@ class finance_edit(QWidget):
 
                 all_fine_months = []
 
-                for month in self.current_pending_months[till_index:from_index+1]:
+                for month in self.current_pending_months[till_index:from_index + 1]:
                     all_fine_months.append([month])
 
                 transact_date = str(self.date_line.date().toPyDate())
@@ -525,7 +531,7 @@ class finance_edit(QWidget):
                     fine = calculate_fine(month=month[0], transact_date=fix_date(transact_date))
                     month = month.append(fine)
 
-                    total_fine += fine*50
+                    total_fine += fine * 50
 
                 self.fine_line.setText(str(total_fine))
                 self.set_fine_tip(all_fine_months=all_fine_months)
@@ -540,8 +546,9 @@ class finance_edit(QWidget):
 
     def set_total(self):
         if not self.presetting:
+
             if len(self.amount_line.text()) > 0:
-                amount = int(self.amount_line.text())
+                amount = float(self.amount_line.text())
             else:
                 amount = 0
 
