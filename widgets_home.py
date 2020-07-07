@@ -264,3 +264,6 @@ class center_widget(QWidget):
         stats_content = get_home_stats()
         stats_label = f"Monthly Fee Status ({current_month}) : {stats_content['received']} received, {stats_content['pending']} pending."
         self.home_current_stats_label.setText(stats_label)
+
+        funds_label = f"Monthly Collection ({current_month}) : {stats_content['funds']} INR."
+        self.home_current_collection_label.setText(funds_label)
