@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout
 
 import db_tools
 import receipt
-from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, payment_exists
+from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, payment_exists, design_receipt
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -139,7 +139,11 @@ class finance_entry(QWidget):
         self.fine_label = QLabel("FINE :")
         self.fine_label.setAlignment(Qt.AlignCenter)
         self.fine_line = QLineEdit()
-        self.fine_line.setText("0")
+
+        if int(self.date_line.text().split(" ")[0]) <= 5:
+            self.fine_line.setText("0")
+        else:
+            self.fine_line.setText("50")
 
         self.fine_line.setValidator(intValidator)
         self.fine_line.setStyleSheet("border: 1px solid red; color: red")
@@ -319,6 +323,7 @@ class finance_entry(QWidget):
         self.name_value.setText(str(name))
 
     def add_entry(self):
+        receipt_id = self.receipt_id.text()
         date = str(self.date_line.date().toPyDate())
         fee_month = str(self.month_combo.currentText())
 
@@ -340,6 +345,7 @@ class finance_entry(QWidget):
         new_receipt = receipt.receipt(date=fix_date(date), flat=flat, month=fee_month, month_till=fee_till,
                                       amount=amount, fine=fine, mode=mode, ref=ref)
         new_receipt.add_to_db()
+        design_receipt(receipt_id=f"0{receipt_id}")
 
     def final_clicked(self, button):
         if button.text() == "Confirm":
