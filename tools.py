@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 import matplotlib
 import pdfkit
 from jinja2 import FileSystemLoader, Environment
+import num2words
 
 import db_tools
 
 matplotlib.use('Agg')
-
 
 all_months = {'01': 'January', '02': 'February', '03': 'March', '04': 'April', '05': 'May', '06': 'June', '07': 'July',
               '08': 'August', '09': 'September', '10': 'October', '11': 'November', '12': 'December'}
@@ -347,7 +347,8 @@ def backup():
         shutil.copyfile('apartment', backup_file)
 
         members_file, records_file = db_tools.generate_csv()
-        send_backup(backup_path=backup_file, members_path=members_file, records_path=records_file, month=all_months[current_date.split("-")[1]])
+        send_backup(backup_path=backup_file, members_path=members_file, records_path=records_file,
+                    month=all_months[current_date.split("-")[1]])
     else:
         pass
 
@@ -434,11 +435,55 @@ def send_backup(backup_path: str, members_path: str, records_path: str, month: s
     session.quit()
 
 
-def design_receipt():
-    loader = FileSystemLoader('template')
-    env = Environment(loader=loader)
-    template = env.get_template(name='receipt_template.html')
-    return template.render(data="Using JINJA2 templating")
+def design_receipt(receipt_id: str):
+    record_details = db_tools.get_from_db(table="records", attribute='*', key='receipt_id', value=receipt_id)
+
+    if len(record_details) > 0:
+
+        date = record_details[0][1].split("/")
+        date = f"{date[0]} {all_months[date[1]]}, {date[2]}"
+
+        flat = record_details[0][2]
+
+        month = record_details[0][3]
+        month_till = record_details[0][4]
+        amount = record_details[0][5]
+
+        amount = str(amount).split(".")[0]
+        fine = record_details[0][6]
+        mode = record_details[0][7]
+        ref = record_details[0][8]
+
+        name = db_tools.get_from_db(table='members', attribute='name', key='flat', value=flat)[0][0]
+
+        if mode == 'Online Funds Transfer':
+            mode = f"{mode} (ref : {ref})"
+
+        elif mode == 'Cheque':
+            mode = f"{mode} (chq : {ref})"
+
+        if month_till != '-':
+            month = f"{month.split('/')[0]} '{month.split('/')[1]} - {month_till.split('/')[0]} '{month_till.split('/')[1]}"
+
+        else:
+            month = f"{month.split('/')[0]} '{month.split('/')[1]}"
+
+        amount_words = [x.capitalize() for x in num2words.num2words(int(amount) + fine).split(" ")]
+        amount_words = ''.join(f"{x} " for x in amount_words)
+
+        loader = FileSystemLoader('template')
+        env = Environment(loader=loader)
+        template = env.get_template(name='receipt_template.html')
+
+        file_object = open('receipt.html', 'w+')
+        file_object.write(template.render(receipt_id=receipt_id, date=date, name=name, flat=flat,
+                                          mode=mode, amount_words=amount_words,
+                                          month=month, amount=amount,
+                                          number_of_amount_months=int(amount)//1500, fine=fine,
+                                          number_of_fine_months=fine//50, total=int(amount)+fine))
+        file_object.close()
+
+        receipt_to_pdf(flat=flat, month=month, input_text='receipt.html')
 
 
 def receipt_to_pdf(flat: str, month: str, input_text: str):
@@ -451,13 +496,14 @@ def receipt_to_pdf(flat: str, month: str, input_text: str):
 
     path_wkhtmltopdf = r'wkhtmltopdf/bin/wkhtmltopdf.exe'
     config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-    options = {'quiet': ''}
+    options = {'quiet': '', 'enable-local-file-access': ''}
 
-    pdfkit.from_string(input=input_text, output_path=pdf_path, configuration=config, options=options)
+    pdfkit.from_file(input=input_text, output_path=pdf_path, configuration=config, options=options)
 
 
-# receipt_data = design_receipt()
-# receipt_to_pdf(flat='A - 9', month='January', input_text=receipt_data)
+# design_receipt(receipt_id="07.2020/1")
+# receipt_to_pdf(flat='A - 9', month='July-August', input_text=receipt_data)
+
 # receipt_to_pdf(flat='A - 9', month='July')
 # create_secret(name="Sudhanshu", code=2513, curr_date="2019-06-03")
 # backup()
