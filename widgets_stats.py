@@ -1,9 +1,23 @@
+import os
+import subprocess
+
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QFormLayout, QGroupBox, \
-    QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout
+    QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QVBoxLayout, QPushButton, QComboBox
 
-from tools import get_stats_content, get_home_stats
+from tools import get_stats_content, get_home_stats, flats, generate_files
+
+
+def backup():
+    generate_files(back_up=True, csv=False)
+
+
+def csv():
+    generate_files(back_up=False, csv=True)
+    user = os.environ['USERPROFILE']
+    path = user + '\\Desktop\\SocietyERP\\Excel Files'
+    subprocess.Popen(rf'explorer /select,{path}')
 
 
 class stats(QWidget):
@@ -22,6 +36,7 @@ class stats(QWidget):
         self.setLayout(self.grid)
 
         # -- CELL ZERO
+        self.funds_group = QGroupBox("Funds Status")
 
         self.stats_pie = QLabel()
         self.image = QPixmap('pie.png')
@@ -42,7 +57,6 @@ class stats(QWidget):
         self.funds_layout.addRow(self.currency_label)
         self.funds_layout.setVerticalSpacing(10)
 
-        self.funds_group = QGroupBox("Funds Status")
         self.funds_group.setLayout(self.funds_layout)
 
         # -- CELL ONE
@@ -80,9 +94,90 @@ class stats(QWidget):
         self.members_group.setLayout(self.members_layout)
 
         # -- CELL TWO
-        self.demo_group2 = QGroupBox("Additional Functions")
+        self.additional_layout = QVBoxLayout()
+
+        self.remainder_group = QGroupBox("Remainders")
+
+        self.backup_group = QGroupBox("Backup")
+        self.excel_group = QGroupBox("Excel")
+
+        self.backup_h = QHBoxLayout()
+        self.backup_h.addWidget(self.backup_group)
+        self.backup_h.addWidget(self.excel_group)
+
+        self.responsibility_group = QGroupBox("Responsibility")
+
+        self.additional_layout.addWidget(self.remainder_group)
+        self.additional_layout.addLayout(self.backup_h)
+        self.additional_layout.addWidget(self.responsibility_group)
+        self.additional_layout.setSpacing(20)
+        self.additional_layout.setContentsMargins(0, 0, 0, 0)
+
+        # ---
+        self.remainder_desc = QLabel("Send a mail to all the pending members for this month, as a remainder to pay the fees.")
+        self.remainder_desc.setWordWrap(True)
+        self.remainder_button = QPushButton("Send REMAINDERS")
+
+        self.remainder_layout = QVBoxLayout()
+        self.remainder_layout.addWidget(self.remainder_desc)
+        self.remainder_layout.addWidget(self.remainder_button)
+        self.remainder_group.setLayout(self.remainder_layout)
+
+        # ---
+        self.backup_desc = QLabel("Backup the current state of database, and save it online.")
+        self.backup_desc.setWordWrap(True)
+        self.backup_button = QPushButton("Generate BACKUP")
+        self.backup_button.setToolTip("Backups are automatically generated at the start of every month.")
+
+        self.backup_layout = QVBoxLayout()
+        self.backup_layout.addWidget(self.backup_desc)
+        self.backup_layout.addWidget(self.backup_button)
+
+        self.backup_group.setLayout(self.backup_layout)
+
+        self.excel_desc = QLabel("Generate an Excel file for current state of database.")
+        self.excel_desc.setWordWrap(True)
+        self.excel_button = QPushButton("Generate EXCEL")
+        self.excel_button.setToolTip("Create Excel files of Members and Records.")
+
+        self.excel_layout = QVBoxLayout()
+        self.excel_layout.addWidget(self.excel_desc)
+        self.excel_layout.addWidget(self.excel_button)
+
+        self.excel_group.setLayout(self.excel_layout)
+
+        # ---
+        self.responsibility_desc = QLabel("Pass on the responsibility of fee collection to a different member.")
+
+        self.responsibility_desc.setWordWrap(True)
+
+        self.responsibility_combo = QComboBox()
+        model = self.responsibility_combo.model()
+
+        for flat in flats:
+            model.appendRow(QStandardItem(flat))
+
+        self.responsibility_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
+        self.responsibility_combo.setFixedWidth(120)
+
+        self.responsibility_button = QPushButton("TRANSFER")
+        self.responsibility_button.setToolTip("This will send a mail with latest database and the software to new member.")
+
+        self.responsibility_h = QHBoxLayout()
+        self.responsibility_h.addWidget(self.responsibility_combo)
+        self.responsibility_h.addWidget(self.responsibility_button)
+
+        self.responsibility_layout = QVBoxLayout()
+        self.responsibility_layout.addWidget(self.responsibility_desc)
+        self.responsibility_layout.addLayout(self.responsibility_h)
+
+        self.responsibility_group.setLayout(self.responsibility_layout)
+
+        # -- FUNCTIONALITY
+        self.backup_button.clicked.connect(backup)
+        self.excel_button.clicked.connect(csv)
 
         # -- STATS GRID
         self.grid.addWidget(self.funds_group, 0, 0, 2, 1)
         self.grid.addWidget(self.members_group, 0, 1, 2, 2)
-        self.grid.addWidget(self.demo_group2, 0, 3, 2, 1)
+        self.grid.addLayout(self.additional_layout, 0, 3, 2, 1)
