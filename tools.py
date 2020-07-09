@@ -33,9 +33,14 @@ currentMonth = datetime.datetime.now().month
 currentYear = datetime.datetime.now().year
 
 
-def authenticate():
+def valid_user():
     if os.path.isfile("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat"):
-        return True
+        datefile = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "r+")
+        system_code = datefile.read()
+        system_code = system_code.split("#")
+
+        user_name = system_code[1]
+        return user_name
     else:
         return False
 
@@ -318,39 +323,50 @@ def payment_exists(flat: str, month: str):
                 return True
 
 
-def backup():
-    datefile = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "r+")
-    last_update = datefile.read()
-    last_update = last_update.split("#")
+def backup(force: bool = False):
+    if force:
+        user = os.environ['USERPROFILE']
+        path = user + '\\Desktop\\SocietyERP\\Backup'
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-    last_date = last_update[0]
-
-    current_date = time.strftime("%Y-%m-%d")
-
-    if last_date[2:4] != current_date[2:4] or last_date[5:7] != current_date[5:7]:
-
-        if last_date[2:4] != current_date[2:4]:
-            datefile.close()
-            shutil.rmtree(path="C:\\Users\\Public\\Public SocietyERP-Config")
-            os.mkdir("C:\\Users\\Public\\Public SocietyERP-Config")
-            datefile = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "a")
-
-        last_update[0] = current_date
-        new_update = ''.join([f"{x}#" for x in last_update])
-
-        datefile.write(new_update[:-1])
-        datefile.close()
-
-        backup_file = os.path.join('C:\\Users\\Public\\Public SocietyERP-Config',
-                                   os.path.basename('apartment') + time.strftime("%d-%m-%Y-%H%M"))
+        backup_file = os.path.join(path, os.path.basename('apartment') + time.strftime("%d-%m-%Y-%H%M"))
 
         shutil.copyfile('apartment', backup_file)
 
-        members_file, records_file = db_tools.generate_csv()
-        send_backup(backup_path=backup_file, members_path=members_file, records_path=records_file,
-                    month=all_months[current_date.split("-")[1]])
     else:
-        pass
+        datefile = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "r+")
+        last_update = datefile.read()
+        last_update = last_update.split("#")
+
+        last_date = last_update[0]
+
+        current_date = time.strftime("%Y-%m-%d")
+
+        if last_date[2:4] != current_date[2:4] or last_date[5:7] != current_date[5:7]:
+
+            if last_date[2:4] != current_date[2:4]:
+                datefile.close()
+                shutil.rmtree(path="C:\\Users\\Public\\Public SocietyERP-Config")
+                os.mkdir("C:\\Users\\Public\\Public SocietyERP-Config")
+                datefile = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "a")
+
+            last_update[0] = current_date
+            new_update = ''.join([f"{x}#" for x in last_update])
+
+            datefile.write(new_update[:-1])
+            datefile.close()
+
+            backup_file = os.path.join('C:\\Users\\Public\\Public SocietyERP-Config',
+                                       os.path.basename('apartment') + time.strftime("%d-%m-%Y-%H%M"))
+
+            shutil.copyfile('apartment', backup_file)
+
+            members_file, records_file = db_tools.generate_csv()
+            send_backup(backup_path=backup_file, members_path=members_file, records_path=records_file,
+                        month=all_months[current_date.split("-")[1]])
+        else:
+            pass
 
 
 def send_receipt(receipt: str, flat: str, month: str):
@@ -479,8 +495,8 @@ def design_receipt(receipt_id: str):
         file_object.write(template.render(receipt_id=receipt_id, date=date, name=name, flat=flat,
                                           mode=mode, amount_words=amount_words,
                                           month=month, amount=amount,
-                                          number_of_amount_months=int(amount)//1500, fine=fine,
-                                          number_of_fine_months=fine//50, total=int(amount)+fine))
+                                          number_of_amount_months=int(amount) // 1500, fine=fine,
+                                          number_of_fine_months=fine // 50, total=int(amount) + fine))
         file_object.close()
 
         receipt_to_pdf(flat=flat, month=month, input_text='receipt.html')
@@ -488,7 +504,7 @@ def design_receipt(receipt_id: str):
 
 def receipt_to_pdf(flat: str, month: str, input_text: str):
     user = os.environ['USERPROFILE']
-    path = user + '\\Desktop\\SocietyERP'
+    path = user + '\\Desktop\\SocietyERP\\Receipts'
     if not os.path.exists(path):
         os.makedirs(path)
 
@@ -499,6 +515,43 @@ def receipt_to_pdf(flat: str, month: str, input_text: str):
     options = {'quiet': '', 'enable-local-file-access': ''}
 
     pdfkit.from_file(input=input_text, output_path=pdf_path, configuration=config, options=options)
+
+
+def generate_files(back_up: bool = False, csv: bool = True):
+    if csv and not back_up:
+        db_tools.generate_csv()
+
+    elif back_up and not csv:
+        backup(force=True)
+
+
+def write_secret_file(name: str):
+    os.mkdir("C:\\Users\\Public\\Public SocietyERP-Config")
+    file = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "a")
+
+    curr_date = time.strftime("%Y-%m-%d")
+
+    code = get_code(name=name)
+
+    to_write = f"{curr_date}#{name}#{code}"
+
+    file.write(to_write)
+
+
+def get_code(name: str):
+    names = name.split(" ")
+
+    if ord(names[1][0].lower()) - 96 > 9:
+        name = ord(names[1][0].lower()) - 96
+    else:
+        name = f"0{ord(names[1][0].lower()) - 96}"
+
+    if len(names[-1]) > 9:
+        surname = len(names[-1])
+    else:
+        surname = f"0{len(names[-1])}"
+
+    return f"{name}{surname}"
 
 
 # design_receipt(receipt_id="07.2020/1")
