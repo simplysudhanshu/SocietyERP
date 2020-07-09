@@ -355,8 +355,11 @@ class finance_entry(QWidget):
             self.receipt_id.setText(currentReceipt)
             self.flat_combo.setCurrentIndex(0)
             self.name_value.setText("Mr D. S. Patil")
-            self.amount_line.setText('0')
-            self.fine_line.setText('0')
+            self.amount_line.setText('1500')
+            if int(self.date_line.text().split(" ")[0]) <= 5:
+                self.fine_line.setText("0")
+            else:
+                self.fine_line.setText("50")
             self.ref_line.clear()
 
     def set_pending_months(self, date: str = None):
