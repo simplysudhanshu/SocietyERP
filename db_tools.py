@@ -163,7 +163,7 @@ def get_statement(date: str = None, flat: str = None, month: str = None):
         return output
 
 
-def generate_csv():
+def generate_csv(secret: bool = False):
     conn = create_connection()
     conn.text_factory = str
 
@@ -177,37 +177,52 @@ def generate_csv():
 
     data_members = cur_members.execute("SELECT * FROM members")
     data_records = cur_records.execute(
-        "SELECT r.receipt_id, r.date, r.flat, m.name, r.fee_month, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE r.flat = m.flat")
+        "SELECT r.receipt_id, r.date, r.flat, m.name, r.fee_month, r.fee_till, r.amount, r.fine, r.mode, r.ref FROM records r, members m WHERE r.flat = m.flat")
+
+    data_members = [list(row) for row in data_members]
+    data_records = [list(row) for row in data_records]
+
+    for row in data_records:
+        if row[5] != "-":
+            row[4] = f"{row[4]} - {row[5]}"
+
+        row.remove(row[5])
 
     with open(
-            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}_members.csv',
+            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_members.csv',
             'w') as f_member:
         writer = csv.writer(f_member)
         writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
-        writer.writerows(data_members)
+        for row in data_members:
+            writer.writerow(row)
 
     with open(
-            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}_records.csv',
+            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_records.csv',
             'w') as f_records:
         writer = csv.writer(f_records)
         writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
-        writer.writerows(data_records)
 
-    with open(
-            f'C:\\Users\\Public\\Public SocietyERP-Config\\members_{time.strftime("%d-%m-%Y-%H%M")}.csv',
-            'w') as sf_member:
-        writer = csv.writer(sf_member)
-        writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
-        writer.writerows(data_members)
+        for row in data_records:
+            writer.writerow(row)
 
-    with open(
-            f'C:\\Users\\Public\\Public SocietyERP-Config\\records_{time.strftime("%d-%m-%Y-%H%M")}.csv',
-            'w') as sf_records:
-        writer = csv.writer(sf_records)
-        writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
-        writer.writerows(data_records)
+    if secret:
+        with open(
+                f'C:\\Users\\Public\\Public SocietyERP-Config\\members_{time.strftime("%d-%m-%Y-%H%M")}hrs.csv',
+                'w') as sf_member:
+            writer = csv.writer(sf_member)
+            writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
+            writer.writerows(data_members)
+            for row in data_members:
+                writer.writerow(row)
 
-    return f_member.name, f_records.name
+        with open(
+                f'C:\\Users\\Public\\Public SocietyERP-Config\\records_{time.strftime("%d-%m-%Y-%H%M")}hrs.csv',
+                'w') as sf_records:
+            writer = csv.writer(sf_records)
+            writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
+
+            for row in data_records:
+                writer.writerow(row)
 
 
 def get_members_stats(one_member: str = None):
@@ -293,7 +308,7 @@ def get_funds_stats(month: int):
 # connection.commit()
 
 # --
-
+# generate_csv()
 # add_to_db(table='members', attributes=["A-09", "Mr Kulkarni", "Mr Kulkarni", 1, "a@xyz"])
 # add_to_db(table='records', attributes=["23/06/20", "A-10", 1500, "cash", "cash"])
 
