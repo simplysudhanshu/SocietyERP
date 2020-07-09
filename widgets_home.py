@@ -1,10 +1,12 @@
-from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QVBoxLayout, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, \
+    QInputDialog, QMessageBox, QFormLayout, QLineEdit, QComboBox
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
 from datetime import date
 
-from tools import create_spacer_item, get_home_stats
+from tools import create_spacer_item, get_home_stats, valid_user, verify_code, flats, get_name, write_secret_file, \
+    get_code
 import marathi
 
 from widgets_finance_entry import finance_entry
@@ -12,11 +14,6 @@ from widgets_finance_search import finance_search
 from widgets_finance_edit import finance_edit
 from widgets_stats import stats
 
-
-flats = [f"A - {str(x)}" for x in range(1, 23)]
-
-months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-          'August', 'September', 'October', 'November', 'December']
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -40,6 +37,18 @@ class center_widget(QWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
+
+        self.name_line = QLabel("Mr D. S. Patil")
+        self.email_line = QLineEdit()
+        self.flat_combo = QComboBox()
+
+        self.home_button = QPushButton('')
+        self.home_button.hide()
+
+        self.name = QLabel()
+
+        self.verification_line = QLineEdit()
+        self.verification_group = QGroupBox("AUTHENTICATION")
 
         current_month = date.today().strftime('%B')
 
@@ -67,7 +76,7 @@ class center_widget(QWidget):
         # -- HOME FINANCE PANEL:
         self.home_add_entry_button = QPushButton("&Add New Entry")
         self.home_search_entry_button = QPushButton("Search Records")
-        self.home_edit_entry_button = QPushButton("Edit Records")
+        self.home_edit_entry_button = QPushButton("Edit and Resend Records")
 
         self.home_finance_layout = QVBoxLayout()
         self.home_finance_layout.addWidget(self.home_add_entry_button)
@@ -106,12 +115,15 @@ class center_widget(QWidget):
         self.active_widget = None
 
         # -- BUTTONS FUNCTIONS:
-        self.home_add_entry_button.clicked.connect(lambda: self.show_Finance_entry())
-        self.home_search_entry_button.clicked.connect(lambda: self.show_Finance_search())
-        self.home_edit_entry_button.clicked.connect(lambda: self.show_Finance_edit())
-        self.home_stats_button.clicked.connect(lambda: self.show_Stats())
+        self.home_add_entry_button.clicked.connect(self.show_Finance_entry)
+        self.home_search_entry_button.clicked.connect(self.show_Finance_search)
+        self.home_edit_entry_button.clicked.connect(self.show_Finance_edit)
+        self.home_stats_button.clicked.connect(self.show_Stats)
 
         # -- LAUNCHING HOME PAGE:
+        for item in self.home:
+            item.hide()
+
         self.deploy_home()
 
     # - TOP LEVEL HOME PAGE + TEMPLATE:
@@ -152,33 +164,30 @@ class center_widget(QWidget):
         title_group.setLayout(title_layout)
 
         # -- HOME BUTTON
-        home_button = QPushButton('')
-        home_button.setIcon(QIcon('icon.png'))
-        home_button.setIconSize(QSize(30, 30))
-        home_button.setFixedSize(50, 50)
+        self.home_button.setIcon(QIcon('icon.png'))
+        self.home_button.setIconSize(QSize(30, 30))
+        self.home_button.setFixedSize(50, 50)
 
-        home_button.clicked.connect(lambda: self.get_latest_stats())
-        home_button.clicked.connect(lambda: self.show_home())
+        self.home_button.clicked.connect(self.get_latest_stats)
+        self.home_button.clicked.connect(self.show_home)
 
         home_button_layout_h = QHBoxLayout()
-        home_button_layout_h.addWidget(home_button)
+        home_button_layout_h.addWidget(self.home_button)
         home_button_layout_h.addStretch(-1)
 
         home_button_layout = QVBoxLayout()
         home_button_layout.addLayout(home_button_layout_h)
 
         # -- WELCOME
-        welcome_layout = QHBoxLayout()
-        welcome = QLabel("                                       Hello,")
-        name = QLabel("Mr. X")
+        welcome = QLabel(" Hello,")
+        welcome.setAlignment(Qt.AlignRight)
 
-        welcome.setAlignment(Qt.AlignTop)
+        welcome_layout = QFormLayout()
 
-        name.setAlignment(Qt.AlignTop)
-        name.setStyleSheet("font: bold")
+        self.name.setAlignment(Qt.AlignCenter)
+        self.name.setStyleSheet("font: bold")
 
-        welcome_layout.addWidget(welcome)
-        welcome_layout.addWidget(name)
+        welcome_layout.addRow(welcome, self.name)
 
         # -- DATE
         date_label = QLabel(f"{date.today().strftime('%d %B, %Y')}")
@@ -190,6 +199,8 @@ class center_widget(QWidget):
         self.grid.addLayout(welcome_layout, 1, 1)
         self.grid.addWidget(date_label, 1, 2, )
         self.grid.addItem(create_spacer_item(w=150, h=50), 3, 0, 1, 3)
+
+        self.authenticate()
 
     def show_Finance_entry(self):
         for item in self.home:
@@ -230,7 +241,7 @@ class center_widget(QWidget):
         finance_entry_layout = QVBoxLayout()
         finance_entry_layout.addWidget(finance_entry_object)
 
-        finance_entry_group = QGroupBox("EDIT TRANSACTION ENTRY")
+        finance_entry_group = QGroupBox("EDIT or RESEND TRANSACTION ENTRY")
         finance_entry_group.setLayout(finance_entry_layout)
 
         self.grid.addWidget(finance_entry_group, 2, 0, 2, 3)
@@ -267,3 +278,118 @@ class center_widget(QWidget):
 
         funds_label = f"Monthly Collection ({current_month}) : {stats_content['funds']} INR."
         self.home_current_collection_label.setText(funds_label)
+
+    def authenticate(self):
+        if valid_user():
+            self.verify_user(valid_user())
+
+        else:
+            self.new_user()
+
+    def verify_user(self, user_name):
+        self.name.setText(user_name)
+
+        verification_desc = QLabel("Enter the Security Code to log into the system:")
+        verification_button = QPushButton("Log In")
+        verification_button.clicked.connect(self.check_code)
+
+        verification_form = QFormLayout()
+        verification_form.addRow(verification_desc)
+        verification_form.addRow(self.verification_line, verification_button)
+        verification_form.setVerticalSpacing(90)
+        verification_form.setSpacing(60)
+
+        self.verification_group.setLayout(verification_form)
+        self.verification_group.setFixedWidth(400)
+        self.verification_group.setFixedHeight(200)
+
+        self.grid.addWidget(self.verification_group, 2, 1)
+        self.grid.addItem(create_spacer_item(w=150, h=250), 3, 0, 1, 3)
+
+    def check_code(self):
+        if len(self.verification_line.text()) > 0:
+            if verify_code(self.verification_line.text()):
+                self.verification_group.hide()
+                for item in self.home:
+                    item.show()
+
+                self.home_button.show()
+
+            else:
+                reply = QMessageBox()
+                reply.setIcon(QMessageBox.Critical)
+                reply.setText("You need the Authenticate Code to log into the system.")
+                reply.setWindowTitle("INVALID Code")
+                reply.exec_()
+                self.verification_line.setFocus()
+
+    def new_user(self):
+        new_desc = QLabel("Looks like this Computer isn't registered. Please enter the following details:")
+        new_desc.setWordWrap(True)
+
+        flat_label = QLabel("Flat No. :")
+        model = self.flat_combo.model()
+
+        for flat in flats:
+            model.appendRow(QStandardItem(flat))
+
+        self.flat_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
+
+        self.flat_combo.currentIndexChanged['QString'].connect(self.set_name)
+
+        # ---
+        name_label = QLabel("Name :")
+
+        # ---
+        email_label = QLabel("Email ID :")
+
+        register = QPushButton("Register")
+        register.clicked.connect(self.register_user)
+
+        new_layout = QFormLayout()
+        new_layout.addRow(new_desc)
+        new_layout.addRow(flat_label, self.flat_combo)
+        new_layout.addRow(name_label, self.name_line)
+        new_layout.addRow(email_label, self.email_line)
+        new_layout.addRow(register)
+
+        new_layout.setVerticalSpacing(50)
+        new_layout.setSpacing(60)
+
+        self.verification_group.setLayout(new_layout)
+        self.verification_group.setFixedWidth(400)
+        self.verification_group.setFixedHeight(450)
+        self.verification_group.setTitle("NEW USER")
+
+        self.grid.addWidget(self.verification_group, 2, 1)
+        self.grid.addItem(create_spacer_item(w=150, h=50), 3, 0, 1, 3)
+
+    def set_name(self, flat):
+        name = get_name(flat)
+        self.name_line.setText(str(name))
+
+    def register_user(self):
+        if len(self.email_line.text()) == 0:
+            reply = QMessageBox()
+            reply.setIcon(QMessageBox.Warning)
+            reply.setText("EMAIL field cannot be left empty.")
+            reply.setStandardButtons(QMessageBox.Retry)
+            reply.setWindowTitle("INVALID ENTRY")
+            reply.exec_()
+
+        else:
+            write_secret_file(name=self.name_line.text())
+            code = get_code(name=self.name_line.text())
+
+            code_box = QMessageBox()
+            code_box.setIcon(QMessageBox.Warning)
+            code_box.setText(f"Please remember your Authentication Code : \n\n                      {code}")
+            code_box.setStandardButtons(QMessageBox.Ok)
+            code_box.setWindowTitle("REGISTRATOIN SUCCESSFUL")
+            code_box.exec_()
+
+            self.verification_group.hide()
+            for item in self.home:
+                item.show()
+
+            self.home_button.show()
