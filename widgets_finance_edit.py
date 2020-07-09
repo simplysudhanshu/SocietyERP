@@ -1,12 +1,15 @@
-from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
-    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QCalendarWidget, QInputDialog
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+import os
+import subprocess
 
-import receipt
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
+    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QInputDialog
+
 import db_tools
+import receipt
 from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, \
-    payment_exists
+    design_receipt, verify_code
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -50,11 +53,22 @@ class finance_edit(QWidget):
         self.receipt_id = QLineEdit()
         self.receipt_id.setStyleSheet("font: bold")
         self.receipt_id.setAlignment(Qt.AlignCenter)
+        self.receipt_id.setToolTip("Enter a valid Receipt-ID")
 
-        self.receipt_desc = QLabel("Enter a valid Receipt ID to edit the details.")
-        self.receipt_desc.setStyleSheet("font-size: 15px;")
-        self.receipt_desc.setAlignment(Qt.AlignCenter)
-        self.receipt_desc.setWordWrap(True)
+        self.print_button = QPushButton("PRINT")
+        self.print_button.setFixedWidth(122)
+        self.print_button.setToolTip("Get Receipt PDF")
+
+        self.resend_button = QPushButton("RESEND")
+        self.resend_button.setToolTip("Send a copy via mail to the member")
+
+        self.edit_button = QPushButton("EDIT")
+        self.edit_button.setToolTip("Edit the details of this record")
+
+        self.buttons_layout = QHBoxLayout()
+        self.buttons_layout.addWidget(self.resend_button)
+        self.buttons_layout.addWidget(self.edit_button)
+        self.buttons_layout.setSpacing(5)
 
         # ---
         self.flat_label = QLabel("FLAT NO. :")
@@ -76,7 +90,7 @@ class finance_edit(QWidget):
         # ---
         self.finance_entry_layout0 = QFormLayout()
         self.finance_entry_layout0.addRow(self.receipt_label, self.receipt_id)
-        self.finance_entry_layout0.addRow(self.receipt_desc)
+        self.finance_entry_layout0.addRow(self.print_button, self.buttons_layout)
         self.finance_entry_layout0.addRow(self.flat_label, self.flat_combo)
         self.finance_entry_layout0.addRow(self.name_label, self.name_value)
         self.finance_entry_layout0.setVerticalSpacing(90)
@@ -220,6 +234,10 @@ class finance_edit(QWidget):
         self.amount_line.textChanged.connect(self.set_total)
         self.fine_line.textChanged.connect(self.set_total)
 
+        self.edit_button.clicked.connect(self.enable_edit)
+        self.print_button.clicked.connect(self.print_receipt)
+        self.resend_button.clicked.connect(self.resend_receipt)
+
         self.receipt_id.textChanged['QString'].connect(lambda receipt_id: self.get_receipt(receipt_id))
 
         # -- FINANCE ENTRY GRID
@@ -227,6 +245,9 @@ class finance_edit(QWidget):
         self.grid.addWidget(self.finance_entry_group1, 0, 1, 2, 1)
         self.grid.addWidget(self.finance_entry_group2, 0, 2, 2, 1)
 
+        self.print_button.setEnabled(False)
+        self.resend_button.setEnabled(False)
+        self.edit_button.setEnabled(False)
         self.flat_label.setEnabled(False)
         self.flat_combo.setEnabled(False)
         self.name_label.setEnabled(False)
@@ -288,20 +309,29 @@ class finance_edit(QWidget):
 
             self.presetting = False
 
-            self.flat_label.setEnabled(True)
-            self.flat_combo.setEnabled(True)
-            self.name_label.setEnabled(True)
-            self.name_value.setEnabled(True)
-            self.finance_entry_group1.setEnabled(True)
-            self.finance_entry_group2.setEnabled(True)
+            self.print_button.setEnabled(True)
+            self.resend_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
 
         else:
+            self.print_button.setEnabled(False)
+            self.resend_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+
             self.flat_label.setEnabled(False)
             self.flat_combo.setEnabled(False)
             self.name_label.setEnabled(False)
             self.name_value.setEnabled(False)
             self.finance_entry_group1.setEnabled(False)
             self.finance_entry_group2.setEnabled(False)
+
+    def enable_edit(self):
+        self.flat_label.setEnabled(True)
+        self.flat_combo.setEnabled(True)
+        self.name_label.setEnabled(True)
+        self.name_value.setEnabled(True)
+        self.finance_entry_group1.setEnabled(True)
+        self.finance_entry_group2.setEnabled(True)
 
     def months(self, button):
         if button.isChecked():
@@ -358,7 +388,7 @@ class finance_edit(QWidget):
         else:
             code, ok = QInputDialog().getText(self, "Security", "Enter the authentication code:")
 
-            if code == "0000" and ok:
+            if verify_code(code) and ok:
                 if self.month_till_combo.isEnabled():
                     fee_till = f" - {self.month_till_combo.currentText()}"
                 else:
@@ -401,6 +431,7 @@ class finance_edit(QWidget):
         self.name_value.setText(str(name))
 
     def update_entry(self):
+        receipt_id = self.receipt_id.text()
         date = str(self.date_line.date().toPyDate())
         fee_month = str(self.month_combo.currentText())
 
@@ -422,6 +453,8 @@ class finance_edit(QWidget):
         new_receipt = receipt.receipt(date=fix_date(date), flat=flat, month=fee_month, month_till=fee_till,
                                       amount=amount, fine=fine, mode=mode, ref=ref)
         new_receipt.update_db(receipt_id=self.receipt_id.text())
+
+        design_receipt(receipt_id=f"{receipt_id}")
 
     def final_clicked(self, button):
         if button.text() == "Confirm":
@@ -558,3 +591,24 @@ class finance_edit(QWidget):
                 fine = 0
 
             self.total_label.setText(f"TOTAL PAYABLE AMOUNT : {amount + fine}")
+
+    def print_receipt(self):
+        receipt_id = self.receipt_id.text()
+        design_receipt(receipt_id=f"{receipt_id}")
+
+        user = os.environ['USERPROFILE']
+        path = user + '\\Desktop\\SocietyERP\\Receipts'
+
+        subprocess.Popen(rf'explorer /select,{path}')
+
+        self.receipt_id.setText("")
+        self.receipt_id.setFocus()
+
+        self.print_button.setEnabled(False)
+        self.edit_button.setEnabled(False)
+        self.resend_button.setEnabled(False)
+
+    def resend_receipt(self):
+        receipt_id = self.receipt_id.text()
+
+        print(f'resent : {receipt_id}')
