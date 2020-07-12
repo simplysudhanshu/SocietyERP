@@ -3,11 +3,13 @@ from datetime import datetime
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QHBoxLayout, QComboBox, QPushButton, \
-    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox
+    QFormLayout, QLineEdit, QRadioButton, QDateEdit, QMessageBox, QProgressBar
 
 import db_tools
 import receipt
-from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, payment_exists, design_receipt
+from tools import flats, create_spacer_item, fix_date, get_name, calculate_months, fix_date_back, calculate_fine, \
+    payment_exists, design_receipt, send_receipt
+
 
 QSS = '''
 QCalendarWidget QAbstractItemView
@@ -29,14 +31,16 @@ QCalendarWidget QTableView
 
 class finance_entry(QWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self,  home_button: QPushButton, parent=None):
         super().__init__(parent)
 
         intValidator = QIntValidator()
         self.setStyleSheet(QSS)
+
         self.current_pending_months = []
         self.current_advance_months = []
 
+        self.home_button = home_button
         # -- LEVEL TWO GRID
         self.grid = QGridLayout()
         self.grid.setSpacing(20)
@@ -190,6 +194,15 @@ class finance_entry(QWidget):
         self.save_button.setStyleSheet("font: bold")
         self.save_button.clicked.connect(lambda: self.check_form())
 
+        self.status = QLabel("Ready")
+        self.status.setStyleSheet("font: 8pt")
+        self.status.setAlignment(Qt.AlignCenter)
+
+        self.bar = QProgressBar(self)
+        self.bar.setMaximum(100)
+        self.bar.setValue(0)
+        self.bar.setToolTip("Please wait until the process is completed.")
+
         # ---
         self.finance_entry_layout2 = QFormLayout()
         self.finance_entry_layout2.addRow(self.mode_label, self.mode_combo)
@@ -197,7 +210,9 @@ class finance_entry(QWidget):
         self.finance_entry_layout2.addItem(create_spacer_item(w=5, h=30))
         self.finance_entry_layout2.addRow(self.total_label)
         self.finance_entry_layout2.addRow(self.save_button)
-        self.finance_entry_layout2.setVerticalSpacing(80)
+        self.finance_entry_layout2.addRow(self.status)
+        self.finance_entry_layout2.addRow(self.bar)
+        self.finance_entry_layout2.setVerticalSpacing(50)
 
         self.finance_entry_group0 = QGroupBox()
         self.finance_entry_group0.setLayout(self.finance_entry_layout0)
@@ -325,12 +340,14 @@ class finance_entry(QWidget):
     def add_entry(self):
         receipt_id = self.receipt_id.text()
         date = str(self.date_line.date().toPyDate())
-        fee_month = str(self.month_combo.currentText())
+        fee_month = self.month_combo.currentText()
 
         if self.month_till_combo.isEnabled():
             fee_till = self.month_till_combo.currentText()
+            month = f"{fee_month}-{fee_till}"
         else:
             fee_till = ''
+            month = fee_month
 
         flat = str(self.flat_combo.currentText())
         amount = float(self.amount_line.text())
@@ -342,10 +359,36 @@ class finance_entry(QWidget):
         else:
             ref = ''
 
+        print(fee_month)
         new_receipt = receipt.receipt(date=fix_date(date), flat=flat, month=fee_month, month_till=fee_till,
                                       amount=amount, fine=fine, mode=mode, ref=ref)
+        self.disable()
+        self.total_label.setText("Confirming.. PLEASE DO NOT PERFORM ANY OTHER OPERATIONS.")
         new_receipt.add_to_db()
+
+        self.status.setText("Adding to databse & Generating receipt")
+        self.bar.setValue(40)
+
         design_receipt(receipt_id=f"0{receipt_id}")
+
+        self.status.setText("Sending the receipt to the member. (Depends on your internet connection)")
+        self.bar.setValue(75)
+        email_status = send_receipt(flat=flat, month=month)
+
+        self.enable()
+        self.set_total()
+
+        if email_status:
+            self.bar.setValue(100)
+
+        else:
+            reply = QMessageBox()
+            reply.setIcon(QMessageBox.Warning)
+            reply.setText("The system cannot access the internet. Make sure you have an active connection, or any firewall"
+                          "feature blocking the access.")
+            reply.setStandardButtons(QMessageBox.Retry)
+            reply.setWindowTitle("INTERNET")
+            reply.exec_()
 
     def final_clicked(self, button):
         if button.text() == "Confirm":
@@ -360,6 +403,8 @@ class finance_entry(QWidget):
                 self.fine_line.setText("0")
             else:
                 self.fine_line.setText("50")
+            self.bar.setValue(0)
+            self.status.setText("Done !")
             self.ref_line.clear()
 
     def set_pending_months(self, date: str = None):
@@ -476,3 +521,24 @@ class finance_entry(QWidget):
             fine = 0
 
         self.total_label.setText(f"TOTAL PAYABLE AMOUNT : {amount + fine}")
+
+    def disable(self):
+        self.finance_entry_group0.setEnabled(False)
+        self.finance_entry_group1.setEnabled(False)
+        self.home_button.setEnabled(False)
+        self.mode_label.setEnabled(False)
+        self.mode_combo.setEnabled(False)
+        self.ref_label.setEnabled(False)
+        self.ref_line.setEnabled(False)
+        self.save_button.setEnabled(False)
+
+    def enable(self):
+        self.finance_entry_group0.setEnabled(True)
+        self.finance_entry_group1.setEnabled(True)
+        self.home_button.setEnabled(True)
+        self.home_button.setEnabled(True)
+        self.mode_label.setEnabled(True)
+        self.mode_combo.setEnabled(True)
+        self.ref_label.setEnabled(True)
+        self.ref_line.setEnabled(True)
+        self.save_button.setEnabled(True)
