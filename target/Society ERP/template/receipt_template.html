@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RECEIPT</title>
+
+    <style>
+    @font-face
+    {
+        font-family: Montserrat;
+        src: url(template/Montserrat/Montserrat-Light.ttf);
+    }
+
+    body
+    {
+        font-family: 'Montserrat';
+        font-size: 24px;
+        color: black;
+    }
+
+    .container
+    {
+        position: relative;
+    }
+
+    .text-block-receipt-id
+    {
+        position: absolute;
+        bottom: 850px;
+        right: 550px;
+        font-size: 22px;
+
+    }
+
+    .text-block-date
+    {
+        position: absolute;
+        bottom: 850px;
+        right: 80px;
+        font-size: 22px;
+    }
+
+    .text-block-subject
+    {
+        position: absolute;
+        bottom: 750px;
+        right: 310px;
+        font-size: 24px;
+    }
+
+    .text-block-main
+    {
+        position: absolute;
+        bottom: 530px;
+        right: 85px;
+        left: 85px;
+        font-size: 23px;
+        line-height: 2.0;
+        text-align: justify;
+        word-spacing: 3px;
+    }
+    .text-block-amount
+    {
+        position: absolute;
+        bottom: 420px;
+        right: 300px;
+        font-size: 24px;
+    }
+
+    .text-block-subamount
+    {
+        position: absolute;
+        bottom: 402px;
+        right: 515px;
+        font-size: 18px;
+    }
+
+    .text-block-fine
+    {
+        position: absolute;
+        bottom: 350px;
+        right: 325px;
+        font-size: 24px;
+    }
+
+    .text-block-subfine
+    {
+        position: absolute;
+        bottom: 332px;
+        right: 515px;
+        font-size: 18px;
+    }
+
+    .text-block-total
+    {
+        position: absolute;
+        bottom: 270px;
+        right: 288px;
+        font-size: 24px;
+        color: DarkOrange;
+      }
+
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+        <img src="template/demo img.png" style="width:100%">
+
+        <div class="text-block-receipt-id">
+            <p>Receipt ID : <strong>{{receipt_id}}</strong></p>
+        </div>
+
+        <div class="text-block-date">
+                <p>Date : {{date}}</p>
+        </div>
+
+        <!--_____________________________-->
+
+        <div class="text-block-subject">
+            <p><strong>Membership Fee Receipt</strong></p>
+        </div>
+
+        <!--_____________________________-->
+
+        <div class="text-block-main">
+            <p>Received with thanks from <strong><u>{{name}}</u></strong> of flat &nbsp;<strong><u>{{flat}}</u></strong>, the
+                sum of <b><u>{{amount_words}} INR only</u></b> by <strong><u>{{mode}}</u></strong>
+                towards 'Society Maintenance Charges' for <strong><u>{{month}}</u></strong>.</p>
+        </div>
+
+        <!--_____________________________-->
+
+        <div class="text-block-amount">
+            <p>Membership Fee &emsp;&emsp;= &nbsp;&nbsp;<span style='font-family:Arial;'>&#8377;</span> <strong>{{amount}}.00</strong></p>
+        </div>
+
+        <div class="text-block-subamount">
+            <p>1500 x {{number_of_amount_months}} month(s)</p>
+        </div>
+
+        <!--_____________________________-->
+
+        <div class="text-block-fine">
+            <p>Penalty Charges &emsp;&emsp;= &nbsp;&nbsp;<span style='font-family:Arial;'>&#8377;</span> <strong>{{fine}}.00</strong></p>
+        </div>
+
+        <div class="text-block-subfine">
+            <p>{{number_of_fine_months}} late month(s)</p>
+        </div>
+
+        <div class="text-block-total">
+            <p style="border-bottom:1px solid orange;">&nbsp;Total Amount Paid &emsp;&emsp;= &nbsp;&nbsp;<span style='font-family:Arial;'>&#8377;</span> <strong>{{total}}.00 &nbsp;</strong></p>
+        </div>
+
+
+    </div>
+</body>
+</html>
+

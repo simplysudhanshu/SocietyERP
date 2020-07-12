@@ -1,0 +1,3 @@
+('D:\\Sudhanshu\\pycharm\\societyERP\\target\\PyInstaller\\Society '
+ 'ERP\\PYZ-00.pyz',
+ [])

@@ -1,0 +1,6 @@
+{
+    "app_name": "Society ERP",
+    "author": "Sudhanshu Kulkarni",
+    "main_module": "src/main/python/Society_ERP/ui.py",
+    "version": "0.0.0"
+}
