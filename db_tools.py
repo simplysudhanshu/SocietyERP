@@ -97,7 +97,7 @@ def update_db(table: str, identifier: str, all_attributes: list):
     query = ''
 
     if table == 'members':
-        query = f"UPDATE {table} SET name = '{all_attributes[0].lower()}', current = '{all_attributes[1].lower()}', " \
+        query = f"UPDATE {table} SET name = '{all_attributes[0]}', current = '{all_attributes[1]}', " \
                 f"contact = {all_attributes[2]}, email = '{all_attributes[3].lower()}' WHERE flat = '{identifier}'"
 
     elif table == 'records':
@@ -181,6 +181,7 @@ def generate_csv(secret: bool = False):
 
     data_members = [list(row) for row in data_members]
     data_records = [list(row) for row in data_records]
+    print(data_records)
 
     for row in data_records:
         if row[5] != "-":
@@ -188,24 +189,28 @@ def generate_csv(secret: bool = False):
 
         row.remove(row[5])
 
-    with open(
-            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_members.csv',
-            'w') as f_member:
-        writer = csv.writer(f_member)
-        writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
-        for row in data_members:
-            writer.writerow(row)
+    if not secret:
+        with open(
+                f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_members.csv',
+                'w') as f_member:
+            writer = csv.writer(f_member)
+            writer.writerow(['FLAT', 'NAME', 'CURRENT OCCUPANT', 'CONTACT', 'EMAIL'])
+            for row in data_members:
+                writer.writerow(row)
 
-    with open(
-            f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_records.csv',
-            'w') as f_records:
-        writer = csv.writer(f_records)
-        writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
+        with open(
+                f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_records.csv',
+                'w') as f_records:
+            writer = csv.writer(f_records)
+            writer.writerow(['RECEIPT ID', 'DATE', 'FLAT', 'NAME', 'MONTH', 'AMOUNT', 'FINE', 'MODE', 'REFERENCE ID'])
 
-        for row in data_records:
-            writer.writerow(row)
+            for row in data_records:
+                writer.writerow(row)
 
-    if secret:
+        return f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_members.csv',\
+               f'{path}\\SMGRP_{time.strftime("%d-%m-%Y-%H%M")}hrs_records.csv'
+
+    elif secret:
         with open(
                 f'C:\\Users\\Public\\Public SocietyERP-Config\\members_{time.strftime("%d-%m-%Y-%H%M")}hrs.csv',
                 'w') as sf_member:
@@ -223,6 +228,9 @@ def generate_csv(secret: bool = False):
 
             for row in data_records:
                 writer.writerow(row)
+
+        return f'C:\\Users\\Public\\Public SocietyERP-Config\\members_{time.strftime("%d-%m-%Y-%H%M")}hrs.csv', \
+               f'C:\\Users\\Public\\Public SocietyERP-Config\\records_{time.strftime("%d-%m-%Y-%H%M")}hrs.csv'
 
 
 def get_members_stats(one_member: str = None):
@@ -312,7 +320,7 @@ def get_funds_stats(month: int):
 # add_to_db(table='members', attributes=["A-09", "Mr Kulkarni", "Mr Kulkarni", 1, "a@xyz"])
 # add_to_db(table='records', attributes=["23/06/20", "A-10", 1500, "cash", "cash"])
 
-# update_db(table="members", identifier="A-01", all_attributes=["Mr Patil", "Mr Patil", 1, "a@xyz"])
+# update_db(table="members", identifier="A - 1", all_attributes=["Mr D. S. Patil", "Mr D. S. Patil", 9822599523, "sudhanshu.1.k@gmail.com"])
 
 # print(generate_receipt_id(month='6'))
 
