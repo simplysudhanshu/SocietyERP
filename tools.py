@@ -32,6 +32,9 @@ flats = [f"A - {str(x)}" for x in range(1, 23)]
 currentMonth = datetime.datetime.now().month
 currentYear = datetime.datetime.now().year
 
+my_address = 'rajlakshmi.international.school@gmail.com'
+my_password = 'BadAtNames01.'
+
 
 def valid_user():
     if os.path.isfile("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat"):
@@ -324,6 +327,8 @@ def payment_exists(flat: str, month: str):
 
 
 def backup(force: bool = False):
+    current_date = time.strftime("%Y-%m-%d")
+
     if force:
         user = os.environ['USERPROFILE']
         path = user + '\\Desktop\\SocietyERP\\Backup'
@@ -333,6 +338,9 @@ def backup(force: bool = False):
         backup_file = os.path.join(path, os.path.basename('apartment') + time.strftime("%d-%m-%Y-%H%M"))
 
         shutil.copyfile('apartment', backup_file)
+        members_file, records_file = db_tools.generate_csv()
+        send_backup(backup_path=backup_file, members_path=members_file, records_path=records_file,
+                    month=all_months[current_date.split("-")[1]])
 
     else:
         datefile = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "r+")
@@ -340,8 +348,6 @@ def backup(force: bool = False):
         last_update = last_update.split("#")
 
         last_date = last_update[0]
-
-        current_date = time.strftime("%Y-%m-%d")
 
         if last_date[2:4] != current_date[2:4] or last_date[5:7] != current_date[5:7]:
 
@@ -362,28 +368,33 @@ def backup(force: bool = False):
 
             shutil.copyfile('apartment', backup_file)
 
-            members_file, records_file = db_tools.generate_csv()
+            members_file, records_file = db_tools.generate_csv(secret=True)
             send_backup(backup_path=backup_file, members_path=members_file, records_path=records_file,
                         month=all_months[current_date.split("-")[1]])
         else:
             pass
 
 
-def send_receipt(receipt: str, flat: str, month: str):
-    other_data = db_tools.get_from_db(table='members', attribute='name, email_id', key='flat', value=flat)
+def send_receipt(flat: str, month: str, updated: bool = False):
+    other_data = db_tools.get_from_db(table='members', attribute='name, email', key='flat', value=flat)
     other_name = other_data[0][0]
     other_address = other_data[0][1]
 
-    receipt_file = open(receipt, 'rb')
+    receipt_file = open("receipt.pdf", 'rb')
 
-    my_address = ''
-    my_password = ''
+    if updated:
+        mail_content = f"Hello {other_name},\n" \
+                       f"Thank you for paying the society maintenance charges for the month of {month}." \
+                       f"Please find attached, your UPDATED receipt for the same.\n\n" \
+                       f"Regards,\n" \
+                       f"Shree Moraya Gosavi Raj Park - II"
 
-    mail_content = f"Hello {other_name},\n" \
-                   f"Thank you for paying the society maintenance charges for the month of {month}." \
-                   f"Please find attached, your receipt for the same.\n\n" \
-                   f"Regards,\n" \
-                   f"Shree Moraya Gosavi Raj Park - II"
+    else:
+        mail_content = f"Hello {other_name},\n" \
+                       f"Thank you for paying the society maintenance charges for the month of {month}." \
+                       f"Please find attached, your receipt for the same.\n\n" \
+                       f"Regards,\n" \
+                       f"Shree Moraya Gosavi Raj Park - II"
 
     message = MIMEMultipart()
 
@@ -395,16 +406,21 @@ def send_receipt(receipt: str, flat: str, month: str):
     payload_receipt = MIMEBase('application', 'octa-stream')
     payload_receipt.set_payload(receipt_file.read())
     encoders.encode_base64(payload_receipt)
-    payload_receipt.add_header('Content-Disposition', 'attachment', filename=f'receipt({month})')
+    payload_receipt.add_header('Content-Disposition', 'attachment', filename=f'receipt({month}).pdf')
     message.attach(payload_receipt)
 
-    session = smtplib.SMTP(host="smtp.gmail.com", port=587)
-    session.ehlo()
-    session.starttls()
-    session.login(my_address, my_password)
+    try:
+        session = smtplib.SMTP(host="smtp.gmail.com", port=587)
+        session.ehlo()
+        session.starttls()
+        session.login(my_address, my_password)
 
-    session.send_message(message)
-    session.quit()
+        session.send_message(message)
+        session.quit()
+        return True
+
+    except Exception:
+        return False
 
 
 def send_backup(backup_path: str, members_path: str, records_path: str, month: str):
@@ -412,46 +428,127 @@ def send_backup(backup_path: str, members_path: str, records_path: str, month: s
     members_file = open(members_path, 'rb')
     records_file = open(records_path, 'rb')
 
-    my_address = ''
-    my_password = ''
-
     mail_content = f"Monthly Backup Service for SocietyERP. \nBackup generated for the month of {month.upper()}."
 
     message = MIMEMultipart()
 
     message['From'] = my_address
     message['To'] = my_address
-    message['Cc'] = 'pskulkarni1968@gmail.com'
-    message['Subject'] = f'Data Backup : {month.upper()}'
+    # message['Cc'] = 'pskulkarni1968@gmail.com'
+    message['Subject'] = f'A-Wing Data Backup : {month.upper()}'
     message.attach(MIMEText(mail_content, 'plain'))
 
     payload_backup = MIMEBase('application', 'octa-stream')
     payload_backup.set_payload(backup_file.read())
     encoders.encode_base64(payload_backup)
-    payload_backup.add_header('Content-Disposition', 'attachment', filename=f'db_backup({month})')
+    payload_backup.add_header('Content-Disposition', 'attachment', filename=backup_path)
     message.attach(payload_backup)
 
     payload_members = MIMEBase('application', 'octa-stream')
     payload_members.set_payload(members_file.read())
     encoders.encode_base64(payload_members)
-    payload_members.add_header('Content-Disposition', 'attachment', filename=f'members_backup({month})')
+    payload_members.add_header('Content-Disposition', 'attachment', filename=f'members_backup({month}).csv')
     message.attach(payload_members)
 
     payload_records = MIMEBase('application', 'octa-stream')
     payload_records.set_payload(records_file.read())
     encoders.encode_base64(payload_records)
-    payload_records.add_header('Content-Disposition', 'attachment', filename=f'records_backup({month})')
+    payload_records.add_header('Content-Disposition', 'attachment', filename=f'records_backup({month}).csv')
     message.attach(payload_records)
 
+    try:
+        session = smtplib.SMTP(host="smtp.gmail.com", port=587)
+        session.ehlo()
+        session.starttls()
+        session.login(my_address, my_password)
+
+        session.send_message(message)
+        session.quit()
+        return True
+
+    except Exception:
+        return False
+
+
+def transfer_responsibility(flat: str):
+    other_data = db_tools.get_from_db(table='members', attribute='name, email', key='flat', value=flat)
+    other_name = other_data[0][0]
+    other_address = other_data[0][1]
+
+    backup_file = open("apartment", 'rb')
+
+    mail_content = f"Hello {other_name},\n" \
+                   f"The responsibility of Society Maintenance Collection has been transferred to you." \
+                   f"Please find attached, detailed instructions for installing the software.\nIn case of any support," \
+                   f" please contact the previous user.\n\n" \
+                   f"Regards,\n" \
+                   f"Shree Moraya Gosavi Raj Park - II"
+
+    message = MIMEMultipart()
+
+    message['From'] = my_address
+    message['To'] = other_address
+    message['Subject'] = f'Society Collection Responsibility'
+    message.attach(MIMEText(mail_content, 'plain'))
+
+    payload_backup = MIMEBase('application', 'octa-stream')
+    payload_backup.set_payload(backup_file.read())
+    encoders.encode_base64(payload_backup)
+    payload_backup.add_header('Content-Disposition', 'attachment', filename=f'apartment')
+    message.attach(payload_backup)
+
+    try:
+        session = smtplib.SMTP(host="smtp.gmail.com", port=587)
+        session.ehlo()
+        session.starttls()
+        session.login(my_address, my_password)
+
+        session.send_message(message)
+        session.quit()
+        return True
+
+    except Exception:
+        return False
+
+
+def send_remainder(defaulter: str, month: str):
+    start = time.time()
     session = smtplib.SMTP(host="smtp.gmail.com", port=587)
+
+    session.ehlo()
     session.starttls()
     session.login(my_address, my_password)
 
-    session.send_message(message)
+    unsent = []
+
+    other_data = db_tools.get_from_db(table='members', attribute='name, email', key='flat', value=defaulter)
+    other_name = other_data[0][0]
+    other_address = other_data[0][1]
+
+    mail_content = f"Hello {other_name},\n" \
+                   f"A gentle remainder for paying the society maintenance charges for the month of {month.upper()}." \
+                   f"Please pay the fees before 5th of every month to avoid any penalty.\n\n" \
+                   f"Regards,\n" \
+                   f"Shree Moraya Gosavi Raj Park - II"
+
+    message = MIMEMultipart()
+
+    message['From'] = my_address
+    message['To'] = other_address
+    message['Subject'] = f'Society Maintenance Remainder'
+    message.attach(MIMEText(mail_content, 'plain'))
+
+    try:
+        session.send_message(message)
+
+    except Exception:
+        unsent.append(defaulter)
+
     session.quit()
+    return unsent
 
 
-def design_receipt(receipt_id: str):
+def design_receipt(receipt_id: str, send: bool = True):
     record_details = db_tools.get_from_db(table="records", attribute='*', key='receipt_id', value=receipt_id)
 
     if len(record_details) > 0:
@@ -498,17 +595,20 @@ def design_receipt(receipt_id: str):
                                           number_of_amount_months=int(amount) // 1500, fine=fine,
                                           number_of_fine_months=fine // 50, total=int(amount) + fine))
         file_object.close()
+        receipt_to_pdf(flat=flat, month=month, input_text='receipt.html', send=send)
 
-        receipt_to_pdf(flat=flat, month=month, input_text='receipt.html')
 
+def receipt_to_pdf(flat: str, month: str, input_text: str, send: bool = True):
+    if not send:
+        user = os.environ['USERPROFILE']
+        path = user + '\\Desktop\\SocietyERP\\Receipts'
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-def receipt_to_pdf(flat: str, month: str, input_text: str):
-    user = os.environ['USERPROFILE']
-    path = user + '\\Desktop\\SocietyERP\\Receipts'
-    if not os.path.exists(path):
-        os.makedirs(path)
+        pdf_path = f'{path}\\receipt_{month}({flat}).pdf'
 
-    pdf_path = f'{path}\\receipt_{month}({flat}).pdf'
+    else:
+        pdf_path = "receipt.pdf"
 
     path_wkhtmltopdf = r'wkhtmltopdf/bin/wkhtmltopdf.exe'
     config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
