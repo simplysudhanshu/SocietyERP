@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, \
-    QInputDialog, QMessageBox, QFormLayout, QLineEdit, QComboBox
+    QMessageBox, QFormLayout, QLineEdit, QComboBox
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
@@ -206,7 +206,7 @@ class center_widget(QWidget):
         for item in self.home:
             item.hide()
 
-        finance_entry_object = finance_entry(self)
+        finance_entry_object = finance_entry(home_button=self.home_button, parent=self)
 
         finance_entry_layout = QVBoxLayout()
         finance_entry_layout.addWidget(finance_entry_object)
@@ -236,7 +236,7 @@ class center_widget(QWidget):
         for item in self.home:
             item.hide()
 
-        finance_entry_object = finance_edit(self)
+        finance_entry_object = finance_edit(home_button=self.home_button, parent=self)
 
         finance_entry_layout = QVBoxLayout()
         finance_entry_layout.addWidget(finance_entry_object)
@@ -290,7 +290,9 @@ class center_widget(QWidget):
         self.name.setText(user_name)
 
         verification_desc = QLabel("Enter the Security Code to log into the system:")
+        self.verification_line.returnPressed.connect(self.check_code)
         verification_button = QPushButton("Log In")
+        verification_button.setDefault(True)
         verification_button.clicked.connect(self.check_code)
 
         verification_form = QFormLayout()
@@ -389,6 +391,8 @@ class center_widget(QWidget):
             code_box.exec_()
 
             self.verification_group.hide()
+            self.name.setText(self.name_line.text())
+
             for item in self.home:
                 item.show()
 
