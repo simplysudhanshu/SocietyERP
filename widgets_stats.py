@@ -4,13 +4,17 @@ import subprocess
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QFormLayout, QGroupBox, \
-    QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QVBoxLayout, QPushButton, QComboBox
+    QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QVBoxLayout, QPushButton, QComboBox, QProgressBar
 
-from tools import get_stats_content, get_home_stats, flats, generate_files
+from tools import get_stats_content, get_home_stats, flats, generate_files, currentMonth, all_months_values, \
+    send_remainder, transfer_responsibility
 
 
 def backup():
     generate_files(back_up=True, csv=False)
+    user = os.environ['USERPROFILE']
+    path = user + '\\Desktop\\SocietyERP\\Backup'
+    subprocess.Popen(rf'explorer /select,{path}')
 
 
 def csv():
@@ -46,7 +50,7 @@ class stats(QWidget):
         self.stats_pie.setAlignment(Qt.AlignCenter)
 
         self.currency_label = QLabel()
-        currency_content = f"FUNDS COLLECTED IN JULY : {stats_content['funds']} INR"
+        currency_content = f"FUNDS COLLECTED IN {all_months_values[currentMonth-1].upper()} : {stats_content['funds']} INR"
         self.currency_label.setText(currency_content)
         self.currency_label.setWordWrap(True)
         self.currency_label.setAlignment(Qt.AlignCenter)
@@ -62,7 +66,7 @@ class stats(QWidget):
         # -- CELL ONE
         self.members_group = QGroupBox("Members Status")
 
-        stats_content, defaulters = get_stats_content()
+        stats_content, self.defaulters = get_stats_content()
 
         self.stats_result_table = QTableWidget()
 
@@ -77,7 +81,7 @@ class stats(QWidget):
                 if inner_index != 1:
                     table_item.setTextAlignment(Qt.AlignCenter)
 
-                if index in defaulters:
+                if index in self.defaulters:
                     table_item.setForeground(QBrush(QColor(249, 56, 34)))
 
                     if inner_index == 2:
@@ -118,10 +122,18 @@ class stats(QWidget):
         self.remainder_desc.setWordWrap(True)
         self.remainder_button = QPushButton("Send REMAINDERS")
 
+        self.rbar = QProgressBar()
+        self.rbar.setValue(0)
+        self.rbar.setMaximum(100)
+        self.rbar.setTextVisible(True)
+        self.rbar.setFixedSize(472, 15)
+
         self.remainder_layout = QVBoxLayout()
         self.remainder_layout.addWidget(self.remainder_desc)
         self.remainder_layout.addWidget(self.remainder_button)
+        self.remainder_layout.addWidget(self.rbar)
         self.remainder_group.setLayout(self.remainder_layout)
+        self.remainder_group.setFixedWidth(500)
 
         # ---
         self.backup_desc = QLabel("Backup the current state of database, and save it online.")
@@ -158,7 +170,7 @@ class stats(QWidget):
             model.appendRow(QStandardItem(flat))
 
         self.responsibility_combo.setStyleSheet('text-color: black; selection-background-color: rgb(215,215,215)')
-        self.responsibility_combo.setFixedWidth(120)
+        self.responsibility_combo.setFixedWidth(140)
 
         self.responsibility_button = QPushButton("TRANSFER")
         self.responsibility_button.setToolTip("This will send a mail with latest database and the software to new member.")
@@ -176,8 +188,36 @@ class stats(QWidget):
         # -- FUNCTIONALITY
         self.backup_button.clicked.connect(backup)
         self.excel_button.clicked.connect(csv)
+        self.responsibility_button.clicked.connect(self.transfer)
+        self.remainder_button.clicked.connect(self.remainder)
 
         # -- STATS GRID
         self.grid.addWidget(self.funds_group, 0, 0, 2, 1)
         self.grid.addWidget(self.members_group, 0, 1, 2, 2)
         self.grid.addLayout(self.additional_layout, 0, 3, 2, 1)
+
+    def transfer(self):
+        flat = self.responsibility_combo.currentText()
+        transfer_responsibility(flat=flat)
+
+    def remainder(self):
+        self.backup_group.setEnabled(False)
+        self.excel_group.setEnabled(False)
+        self.responsibility_group.setEnabled(False)
+
+        self.remainder_desc.setText("Sending Remainders.\nPlease do not perform any other operations until its complete.")
+
+        defaulters = [f"A - {x + 1}" for x in self.defaulters]
+        self.rbar.setValue(1)
+
+        for index, defaulter in enumerate(defaulters):
+            send_remainder(defaulter=defaulter, month=all_months_values[currentMonth - 1])
+            self.rbar.setValue((index+1)*100//len(defaulters))
+
+        self.rbar.setValue(100)
+        self.backup_group.setEnabled(True)
+        self.excel_group.setEnabled(True)
+        self.responsibility_group.setEnabled(True)
+        self.rbar.setValue(0)
+
+        self.remainder_desc.setText("Send a mail to all the pending members for this month, as a remainder to pay the fees.")
