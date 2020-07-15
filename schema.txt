@@ -1,16 +1,32 @@
-members : 
+TABLE members
 
-flat TEXT PRIMARY KEY NOT NULL
-name TEXT NOT NULL
-current TEXT NOT NULL
-contact NUMBER NOT NULL
-email TEXT NOT NULL
+(flat TEXT PRIMARY KEY NOT NULL,
+name TEXT NOT NULL,
+current TEXT NOT NULL,
+contact NUMBER NOT NULL,
+email TEXT NOT NULL)
 _________________________
-records :
+TABLE records
+(receipt_id TEXT PRIMARY KEY NOT NULL,
+date TEXT NOT NULL,
+flat TEXT NOT NULL,
+fee_month TEXT NOT NULL,
+fee_till TEXT,
+amount REAL NOT NULL,
+fine REAL NOT NULL,
+mode TEXT NOT NULL,
+ref TEXT)
 
-receipt_id TEXT PRIMARY KEY NOT NULL
-date TEXT NOT NULL
-flat TEXT NOT NULL
-amount REAL NOT NULL
-mode TEXT NOT NULL
-ref TEXT NOT NULL
+_________________________
+FREEZE :
+
+set PATH=%PATH%;C:\Windows\System32\downlevel;
+
+fbs freeze --debug
+
+_________________________
+INSTALLER :
+
+set PATH=%PATH%;C:\Program Files (x86)\NSIS;
+
+fbs installer

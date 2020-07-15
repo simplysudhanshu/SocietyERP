@@ -61,7 +61,7 @@
  [],
  False,
  False,
- 1594572653,
+ 1594790282,
  [('run_d.exe',
    'd:\\sudhanshu\\pycharm\\venv_society\\lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit\\run_d.exe',
    'EXECUTABLE')])
