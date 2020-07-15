@@ -425,7 +425,6 @@ class finance_edit(QWidget):
             code, ok = QInputDialog().getText(self, "Security", "Enter the authentication code:")
 
             if verify_code(code) and ok:
-                print("Verified")
 
                 if self.month_till_combo.isEnabled():
                     fee_till = f" - {self.month_till_combo.currentText()}"
@@ -526,19 +525,34 @@ class finance_edit(QWidget):
 
     def final_clicked(self, button):
         if button.text() == "Confirm":
-            print("in confirm")
             self.update_entry()
 
             self.receipt_id.setText("")
             self.receipt_id.setFocus()
             self.flat_combo.setCurrentIndex(0)
-            self.name_value.setText("")
-            self.amount_line.setText('0')
-            self.fine_line.setText('0')
-
+            self.name_value.setText("Mr D. S. Patil")
+            self.amount_line.setText('1500')
+            if int(self.date_line.text().split(" ")[0]) <= 5:
+                self.fine_line.setText("0")
+            else:
+                self.fine_line.setText("50")
             self.bar.setValue(0)
             self.status.setText("Done !")
+            self.mode_combo.setEditText("Cash")
+            self.ref_label.setEnabled(False)
+            self.ref_line.setEnabled(False)
             self.ref_line.clear()
+
+            self.save_button.setEnabled(False)
+            self.print_button.setEnabled(False)
+            self.resend_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+            self.flat_label.setEnabled(False)
+            self.flat_combo.setEnabled(False)
+            self.name_label.setEnabled(False)
+            self.name_value.setEnabled(False)
+            self.finance_entry_group1.setEnabled(False)
+            self.finance_entry_group2.setEnabled(False)
 
     def set_pending_months(self, date: str = None):
         if not self.presetting:

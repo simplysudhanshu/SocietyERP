@@ -417,6 +417,9 @@ class finance_entry(QWidget):
                 self.fine_line.setText("50")
             self.bar.setValue(0)
             self.status.setText("Done !")
+            self.mode_combo.setEditText("Cash")
+            self.ref_label.setEnabled(False)
+            self.ref_line.setEnabled(False)
             self.ref_line.clear()
 
     def set_pending_months(self, date: str = None):
