@@ -1,3 +1,5 @@
+import time
+
 from PyQt5.QtWidgets import QWidget, QGridLayout, QGroupBox, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, \
     QMessageBox, QFormLayout, QLineEdit, QComboBox, QStyleFactory
 from PyQt5.QtGui import *
@@ -5,8 +7,9 @@ from PyQt5.QtCore import *
 
 from datetime import date
 
-from src.main.python.Society_ERP.tools import create_spacer_item, get_home_stats, valid_user, verify_code, flats, get_name, write_secret_file, \
-    get_code
+from src.main.python.Society_ERP.tools import create_spacer_item, get_home_stats, valid_user, verify_code, flats, \
+    get_name, write_secret_file, \
+    get_code, send_registration
 
 import src.main.python.Society_ERP.marathi as marathi
 
@@ -38,10 +41,11 @@ class center_widget(QWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
+        self.new_desc = QLabel("Looks like this Computer isn't registered. Please enter the following details:")
+        self.register = QPushButton("Register")
         self.setStyle(QStyleFactory.create('Fusion'))
 
         self.name_line = QLabel("Mr D. S. Patil")
-        self.email_line = QLineEdit()
         self.flat_combo = QComboBox()
 
         self.home_button = QPushButton('')
@@ -328,8 +332,7 @@ class center_widget(QWidget):
                 self.verification_line.setFocus()
 
     def new_user(self):
-        new_desc = QLabel("Looks like this Computer isn't registered. Please enter the following details:")
-        new_desc.setWordWrap(True)
+        self.new_desc.setWordWrap(True)
 
         flat_label = QLabel("Flat No. :")
         model = self.flat_combo.model()
@@ -338,6 +341,7 @@ class center_widget(QWidget):
             model.appendRow(QStandardItem(flat))
 
         self.flat_combo.setStyleSheet('color: black; selection-background-color: rgb(215,215,215)')
+        self.flat_combo.setStyle(QStyleFactory.create('Fusion'))
 
         self.flat_combo.currentIndexChanged['QString'].connect(self.set_name)
 
@@ -345,17 +349,22 @@ class center_widget(QWidget):
         name_label = QLabel("Name :")
 
         # ---
-        email_label = QLabel("Email ID :")
 
-        register = QPushButton("Register")
-        register.clicked.connect(self.register_user)
+        self.register.clicked.connect(self.register_user)
+        self.register.setStyle(QStyleFactory.create('Fusion'))
+
+        # --
+
+        disclaimer = QLabel("(This will notify the administrators about the new registration and might take up to 10s.)")
+        disclaimer.setStyleSheet("font: 13px")
+        disclaimer.setWordWrap(True)
 
         new_layout = QFormLayout()
-        new_layout.addRow(new_desc)
+        new_layout.addRow(self.new_desc)
         new_layout.addRow(flat_label, self.flat_combo)
         new_layout.addRow(name_label, self.name_line)
-        new_layout.addRow(email_label, self.email_line)
-        new_layout.addRow(register)
+        new_layout.addRow(self.register)
+        new_layout.addRow(disclaimer)
 
         new_layout.setVerticalSpacing(50)
         new_layout.setSpacing(60)
@@ -373,29 +382,38 @@ class center_widget(QWidget):
         self.name_line.setText(str(name))
 
     def register_user(self):
-        if len(self.email_line.text()) == 0:
+        self.send_registration()
+
+        write_secret_file(name=self.name_line.text())
+        code = get_code(name=self.name_line.text())
+
+        code_box = QMessageBox()
+        code_box.setIcon(QMessageBox.Warning)
+        code_box.setText(f"Please remember your Authentication Code : \n\n                      {code}")
+        code_box.setStandardButtons(QMessageBox.Ok)
+        code_box.setWindowTitle("REGISTRATOIN SUCCESSFUL")
+        code_box.exec_()
+
+        self.verification_group.hide()
+        self.name.setText(self.name_line.text())
+
+        for item in self.home:
+            item.show()
+
+        self.home_button.show()
+
+    def send_registration(self):
+        email_status = send_registration(flat=self.flat_combo.currentText(), name=self.name_line.text())
+
+        if not email_status:
             reply = QMessageBox()
             reply.setIcon(QMessageBox.Warning)
-            reply.setText("EMAIL field cannot be left empty.")
+            reply.setText(
+                "The system cannot access the internet. Make sure you have an active connection, or any firewall"
+                "feature blocking the access.")
             reply.setStandardButtons(QMessageBox.Retry)
-            reply.setWindowTitle("INVALID ENTRY")
+            reply.setWindowTitle("INTERNET")
             reply.exec_()
 
         else:
-            write_secret_file(name=self.name_line.text())
-            code = get_code(name=self.name_line.text())
-
-            code_box = QMessageBox()
-            code_box.setIcon(QMessageBox.Warning)
-            code_box.setText(f"Please remember your Authentication Code : \n\n                      {code}")
-            code_box.setStandardButtons(QMessageBox.Ok)
-            code_box.setWindowTitle("REGISTRATOIN SUCCESSFUL")
-            code_box.exec_()
-
-            self.verification_group.hide()
-            self.name.setText(self.name_line.text())
-
-            for item in self.home:
-                item.show()
-
-            self.home_button.show()
+            self.register.setText("Register")

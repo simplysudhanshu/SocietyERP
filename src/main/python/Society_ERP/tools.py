@@ -64,9 +64,34 @@ def verify_code(code: str):
 def create_secret(name: str, code: int, curr_date: str):
     os.mkdir("C:\\Users\\Public\\Public SocietyERP-Config")
     file = open("C:\\Users\\Public\\Public SocietyERP-Config\\97y04m13d.dat", "a")
-    # curr_date = time.strftime("%Y-%m-%d")                                                                             # FIX THIS BACK !
 
     file.write(f"{curr_date}#{name}#{code}")
+
+
+def send_registration(flat: str, name: str):
+    mail_content = f"New Registration assignment for Society ERP:\n\n" \
+                   f"Name : {name}\n" \
+                   f"Flat : {flat}"
+
+    message = MIMEMultipart()
+
+    message['From'] = my_address
+    message['To'] = my_address
+    message['Subject'] = f'New Installation'
+    message.attach(MIMEText(mail_content, 'plain'))
+
+    try:
+        session = smtplib.SMTP(host="smtp.gmail.com", port=587)
+        session.ehlo()
+        session.starttls()
+        session.login(my_address, my_password)
+
+        session.send_message(message)
+        session.quit()
+        return True
+
+    except Exception:
+        return False
 
 
 def create_spacer_item(w: int, h: int):
@@ -479,8 +504,13 @@ def transfer_responsibility(flat: str):
 
     mail_content = f"Hello {other_name},\n" \
                    f"The responsibility of Society Maintenance Collection has been transferred to you." \
-                   f"Please find attached, detailed instructions for installing the software.\nIn case of any support," \
-                   f" please contact the previous user.\n\n" \
+                   f"\n Instructions for setup : \n" \
+                   f"1. Download the software from here -> somelink\n" \
+                   f"2. Please find attached, the latest update of the database file. Copy this file into the installation folder.\n" \
+                   f"   (It will ask whether to replace the old file, say 'yes')\n" \
+                   f"3. You will have the icon in start menu to launch the application, or you can click the 'Society ERP.exe' file to launch the application.\n\n" \
+                   f" In case of any support," \
+                   f" please contact the previous user or the administrators.\n\n" \
                    f"Regards,\n" \
                    f"Shree Moraya Gosavi Raj Park - II"
 
