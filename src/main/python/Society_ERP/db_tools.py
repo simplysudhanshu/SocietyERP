@@ -181,7 +181,6 @@ def generate_csv(secret: bool = False):
 
     data_members = [list(row) for row in data_members]
     data_records = [list(row) for row in data_records]
-    print(data_records)
 
     for row in data_records:
         if row[5] != "-":
@@ -320,7 +319,7 @@ def get_funds_stats(month: int):
 # add_to_db(table='members', attributes=["A-09", "Mr Kulkarni", "Mr Kulkarni", 1, "a@xyz"])
 # add_to_db(table='records', attributes=["23/06/20", "A-10", 1500, "cash", "cash"])
 
-# update_db(table="members", identifier="A - 1", all_attributes=["Mr D. S. Patil", "Mr D. S. Patil", 9822599523, "sudhanshu.1.k@gmail.com"])
+# update_db(table="members", identifier="A - 9", all_attributes=["Mr P. S. Kulkarni", "Mr P. S. Kulkarni", 9850956132, "pskulkarni1968@gmail.com"])
 
 # print(generate_receipt_id(month='6'))
 
@@ -331,14 +330,14 @@ def get_funds_stats(month: int):
 # print(get_funds_stats(month=7))
 
 # print(generate_csv())
-
+#
 # cursor1 = connection.execute("SELECT * FROM members;")
 # for row in cursor1:
 #     print(row)
 
 # cursor2 = connection.execute("SELECT * FROM records")
-# cursor2 = connection.execute("SELECT * FROM records WHERE flat = 'A - 9' ORDER BY 2 DESC")
-#
+# cursor2 = connection.execute("SELECT name FROM sqlite_temp_master WHERE type='table';")
+
 # for row in cursor2:
 #     print(row)
 

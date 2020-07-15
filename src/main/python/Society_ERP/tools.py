@@ -32,8 +32,8 @@ flats = [f"A - {str(x)}" for x in range(1, 23)]
 currentMonth = datetime.datetime.now().month
 currentYear = datetime.datetime.now().year
 
-my_address = 'rajlakshmi.international.school@gmail.com'
-my_password = 'BadAtNames01.'
+my_address = 'smgrp.testmail@gmail.com'
+my_password = 'ShreeMorayaGosavi2'
 
 
 def valid_user():
