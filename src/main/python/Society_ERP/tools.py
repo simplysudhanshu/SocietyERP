@@ -147,7 +147,7 @@ def calculate_months(month: str, pending: bool = True, advance: bool = False):
             else:
                 start_month = 0
 
-            for month in all_months_values[start_month:int(end_month)]:
+            for month in all_months_values[start_month:int(end_month)+1]:
                 applicable_months.append(f"{month} '{end_year}")
 
         return applicable_months
@@ -580,7 +580,6 @@ def send_remainder(defaulter: str, month: str):
 
 def design_receipt(receipt_id: str, send: bool = True):
     record_details = db_tools.get_from_db(table="records", attribute='*', key='receipt_id', value=receipt_id)
-
     if len(record_details) > 0:
 
         date = record_details[0][1].split("/")
@@ -623,7 +622,7 @@ def design_receipt(receipt_id: str, send: bool = True):
                                           mode=mode, amount_words=amount_words,
                                           month=month, amount=amount,
                                           number_of_amount_months=int(amount) // 1500, fine=fine,
-                                          number_of_fine_months=fine // 50, total=int(amount) + fine))
+                                          number_of_fine_months=fine // 50, total=int(amount) + fine, cashier=valid_user()))
         file_object.close()
         receipt_to_pdf(flat=flat, month=month, input_text='receipt.html', send=send)
 
@@ -639,6 +638,7 @@ def receipt_to_pdf(flat: str, month: str, input_text: str, send: bool = True):
 
     else:
         pdf_path = "receipt.pdf"
+
 
     path_wkhtmltopdf = r'wkhtmltopdf/bin/wkhtmltopdf.exe'
     config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
@@ -684,7 +684,7 @@ def get_code(name: str):
     return f"{name}{surname}"
 
 
-# design_receipt(receipt_id="07.2020/1")
+design_receipt(receipt_id="07.2020/1", send=False)
 # receipt_to_pdf(flat='A - 9', month='July-August', input_text=receipt_data)
 
 # receipt_to_pdf(flat='A - 9', month='July')
