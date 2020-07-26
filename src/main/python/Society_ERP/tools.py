@@ -29,11 +29,15 @@ all_months_values = list(all_months.values())
 
 flats = [f"A - {str(x)}" for x in range(1, 23)]
 
+flat_numbers = [str(x) for x in range(1, 23)]
+
+wings = ["A"]
+
 currentMonth = datetime.datetime.now().month
 currentYear = datetime.datetime.now().year
 
-my_address = 'smgrp.testmail@gmail.com'
-my_password = 'ShreeMorayaGosavi2'
+my_address = 'shreemorayagosavirajpark2@gmail.com'
+my_password = 'SMGRajPark2'
 
 
 def valid_user():
@@ -99,7 +103,7 @@ def create_spacer_item(w: int, h: int):
 
 
 def get_name(flat: str):
-    return db_tools.get_from_db(table="members", attribute="name", key="flat", value=flat)[0][0]
+    return db_tools.get_from_db(table="members", attribute="name, current", key="flat", value=flat)[0]
 
 
 def fix_date(date: str):
@@ -405,6 +409,9 @@ def send_receipt(flat: str, month: str, updated: bool = False):
     other_name = other_data[0][0]
     other_address = other_data[0][1]
 
+    if other_address == "-":
+        return "Invalid"
+
     receipt_file = open("receipt.pdf", 'rb')
 
     if updated:
@@ -459,14 +466,13 @@ def send_backup(backup_path: str, members_path: str, records_path: str, month: s
 
     message['From'] = my_address
     message['To'] = my_address
-    # message['Cc'] = 'pskulkarni1968@gmail.com'
     message['Subject'] = f'A-Wing Data Backup : {month.upper()}'
     message.attach(MIMEText(mail_content, 'plain'))
 
     payload_backup = MIMEBase('application', 'octa-stream')
     payload_backup.set_payload(backup_file.read())
     encoders.encode_base64(payload_backup)
-    payload_backup.add_header('Content-Disposition', 'attachment', filename=backup_path)
+    payload_backup.add_header('Content-Disposition', 'attachment', filename="apartment")
     message.attach(payload_backup)
 
     payload_members = MIMEBase('application', 'octa-stream')
@@ -500,49 +506,53 @@ def transfer_responsibility(flat: str):
     other_name = other_data[0][0]
     other_address = other_data[0][1]
 
-    backup_file = open("apartment", 'rb')
+    if other_address == "-":
+        return "Invalid"
 
-    mail_content = f"Hello {other_name},\n" \
-                   f"The responsibility of Society Maintenance Collection has been transferred to you." \
-                   f"\n Instructions for setup : \n" \
-                   f"1. Download the software from here -> somelink\n" \
-                   f"2. Please find attached, the latest update of the database file. Copy this file into the installation folder.\n" \
-                   f"   (It will ask whether to replace the old file, say 'yes')\n" \
-                   f"3. You will have the icon in start menu to launch the application, or you can click the 'Society ERP.exe' file to launch the application.\n\n" \
-                   f" In case of any support," \
-                   f" please contact the previous user or the administrators.\n\n" \
-                   f"Regards,\n" \
-                   f"Shree Moraya Gosavi Raj Park - II"
+    else:
+        backup_file = open("apartment", 'rb')
 
-    message = MIMEMultipart()
+        mail_content = f"Hello {other_name},\n" \
+                       f"The responsibility of Society Maintenance Collection has been transferred to you." \
+                       f"\n\n Instructions for setup : \n" \
+                       f"1. Download the software from here :- https://drive.google.com/drive/folders/1DpNxawpI_c9S7nzeAU_blEZbCR1EOh9c?usp=sharing\n" \
+                       f"2. Run the installer 'SocietyERP.exe'. DO NOT INSTALL THE SOFTWARE IN 'C' DRIVE. Even if the installer suggest so.\n" \
+                       f"2. Please find attached, the latest update of the database file. Copy this file into the installation folder.\n" \
+                       f"   (It will ask whether to replace the old file, say 'yes')\n" \
+                       f"3. You will have the icon in start menu to launch the application, or you can click the 'Society ERP.exe' file to launch the application.\n\n" \
+                       f" In case of any support," \
+                       f" please contact the previous user or the administrators.\n\n" \
+                       f"Regards,\n" \
+                       f"Shree Moraya Gosavi Raj Park - II"
 
-    message['From'] = my_address
-    message['To'] = other_address
-    message['Subject'] = f'Society Collection Responsibility'
-    message.attach(MIMEText(mail_content, 'plain'))
+        message = MIMEMultipart()
 
-    payload_backup = MIMEBase('application', 'octa-stream')
-    payload_backup.set_payload(backup_file.read())
-    encoders.encode_base64(payload_backup)
-    payload_backup.add_header('Content-Disposition', 'attachment', filename=f'apartment')
-    message.attach(payload_backup)
+        message['From'] = my_address
+        message['To'] = other_address
+        message['Subject'] = f'Society Collection Responsibility'
+        message.attach(MIMEText(mail_content, 'plain'))
 
-    try:
-        session = smtplib.SMTP(host="smtp.gmail.com", port=587)
-        session.ehlo()
-        session.starttls()
-        session.login(my_address, my_password)
+        payload_backup = MIMEBase('application', 'octa-stream')
+        payload_backup.set_payload(backup_file.read())
+        encoders.encode_base64(payload_backup)
+        payload_backup.add_header('Content-Disposition', 'attachment', filename='apartment')
+        message.attach(payload_backup)
 
-        session.send_message(message)
-        session.quit()
-        return True
+        try:
+            session = smtplib.SMTP(host="smtp.gmail.com", port=587)
+            session.ehlo()
+            session.starttls()
+            session.login(my_address, my_password)
 
-    except Exception:
-        return False
+            session.send_message(message)
+            session.quit()
+            return True
+
+        except Exception:
+            return False
 
 
 def send_remainder(defaulter: str, month: str):
-    start = time.time()
     session = smtplib.SMTP(host="smtp.gmail.com", port=587)
 
     session.ehlo()
@@ -639,7 +649,6 @@ def receipt_to_pdf(flat: str, month: str, input_text: str, send: bool = True):
     else:
         pdf_path = "receipt.pdf"
 
-
     path_wkhtmltopdf = r'wkhtmltopdf/bin/wkhtmltopdf.exe'
     config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
     options = {'quiet': '', 'enable-local-file-access': ''}
@@ -684,7 +693,7 @@ def get_code(name: str):
     return f"{name}{surname}"
 
 
-design_receipt(receipt_id="07.2020/1", send=False)
+# design_receipt(receipt_id="07.2020/1", send=False)
 # receipt_to_pdf(flat='A - 9', month='July-August', input_text=receipt_data)
 
 # receipt_to_pdf(flat='A - 9', month='July')

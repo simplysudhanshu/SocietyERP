@@ -16,6 +16,7 @@ import src.main.python.Society_ERP.marathi as marathi
 from src.main.python.Society_ERP.widgets_finance_entry import finance_entry
 from src.main.python.Society_ERP.widgets_finance_search import finance_search
 from src.main.python.Society_ERP.widgets_finance_edit import finance_edit
+from src.main.python.Society_ERP.widgets_member_edit import member_edit
 from src.main.python.Society_ERP.widgets_stats import stats
 
 
@@ -68,7 +69,6 @@ class center_widget(QWidget):
         self.home_search_members_button = QPushButton("Search Member Details")
 
         self.home_add_members_button.setEnabled(False)                                                                  # ENABLE AFTER FUNCTIONALITY
-        self.home_search_members_button.setEnabled(False)                                                               # ENABLE AFTER FUNCTIONALITY
 
         self.home_members_layout = QVBoxLayout()
         self.home_members_layout.addWidget(self.home_add_members_button)
@@ -121,6 +121,7 @@ class center_widget(QWidget):
         self.active_widget = None
 
         # -- BUTTONS FUNCTIONS:
+        self.home_search_members_button.clicked.connect(self.show_Member_edit)
         self.home_add_entry_button.clicked.connect(self.show_Finance_entry)
         self.home_search_entry_button.clicked.connect(self.show_Finance_search)
         self.home_edit_entry_button.clicked.connect(self.show_Finance_edit)
@@ -207,6 +208,21 @@ class center_widget(QWidget):
         self.grid.addItem(create_spacer_item(w=150, h=50), 3, 0, 1, 3)
 
         self.authenticate()
+
+    def show_Member_edit(self):
+        for item in self.home:
+            item.hide()
+
+        member_edit_object = member_edit(parent=self)
+
+        member_edit_layout = QVBoxLayout()
+        member_edit_layout.addWidget(member_edit_object)
+
+        member_edit_group = QGroupBox("SEARCH or EDIT MEMBER DETAILS")
+        member_edit_group.setLayout(member_edit_layout)
+
+        self.grid.addWidget(member_edit_group, 2, 0, 2, 3)
+        self.active_widget = member_edit_group
 
     def show_Finance_entry(self):
         for item in self.home:

@@ -38,6 +38,7 @@ class finance_edit(QWidget):
         self.setStyle(QStyleFactory.create('Fusion'))
 
         self.presetting = False
+        self.rent = False
 
         intValidator = QIntValidator()
         self.setStyleSheet(QSS)
@@ -227,6 +228,8 @@ class finance_edit(QWidget):
         self.finance_entry_layout2.addRow(self.status)
         self.finance_entry_layout2.addRow(self.bar)
         self.finance_entry_layout2.setVerticalSpacing(50)
+
+        # -- GROUP BOXES
 
         self.finance_entry_group0 = QGroupBox()
         self.finance_entry_group0.setLayout(self.finance_entry_layout0)
@@ -465,6 +468,14 @@ class finance_edit(QWidget):
 
     def set_name(self, flat):
         name = get_name(flat)
+        if name[0] == name[1]:
+            name = name[0]
+
+        else:
+            name = name[1]
+            self.rent = True
+            self.amount_line.setText(str(1600))
+
         self.name_value.setText(str(name))
 
         if self.save_button is not None:
@@ -516,9 +527,14 @@ class finance_edit(QWidget):
         else:
             reply = QMessageBox()
             reply.setIcon(QMessageBox.Warning)
-            reply.setText(
-                "The system cannot access the internet. Make sure you have an active connection, or any firewall"
-                "feature blocking the access.")
+
+            if email_status == "Invalid":
+                reply.setText(
+                    "The member does not have a Valid E-Mail ID. Cannot send the mail.")
+            else:
+                reply.setText(
+                    "The system cannot access the internet. Make sure you have an active connection, or any firewall"
+                    "feature blocking the access.")
             reply.setStandardButtons(QMessageBox.Retry)
             reply.setWindowTitle("INTERNET")
             reply.exec_()
@@ -615,6 +631,9 @@ class finance_edit(QWidget):
 
                 else:
                     amount = 1500
+
+                if self.rent:
+                    amount += 100
 
                 self.amount_line.setText(str(amount))
                 self.amount_line.setToolTip(f"Total months : {amount // 1500}")

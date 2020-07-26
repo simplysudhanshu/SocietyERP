@@ -304,7 +304,7 @@ def get_funds_stats(month: int):
 # connection.execute("CREATE TABLE records (receipt_id TEXT PRIMARY KEY NOT NULL, date TEXT NOT NULL, flat TEXT NOT NULL, fee_month TEXT NOT NULL, fee_till TEXT, "
 #                    "amount REAL NOT NULL, fine REAL NOT NULL, mode TEXT NOT NULL, ref TEXT);")
 
-# connection.execute("DELETE FROM members;")
+# connection.execute("DELETE FROM members WHERE flat = '1';")
 # connection.execute("DELETE FROM records;")
 
 # connection.execute("DROP TABLE members;")
@@ -323,7 +323,7 @@ def get_funds_stats(month: int):
 
 # print(generate_receipt_id(month='6'))
 
-# print(get_from_db(table="records", attribute="*", key="receipt_id", value="07.2020/1"))
+# print(get_from_db(table="members", attribute="*", key="flat", value="A - 1"))
 
 # print(get_receipts(month="06"))
 

@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QFormLayout, QGroupBox, \
     QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QVBoxLayout, QPushButton, QComboBox, QProgressBar, \
-    QStyleFactory
+    QStyleFactory, QMessageBox
 
 from src.main.python.Society_ERP.tools import get_stats_content, get_home_stats, flats, generate_files, currentMonth, all_months_values, \
     send_remainder, transfer_responsibility
@@ -209,7 +209,24 @@ class stats(QWidget):
 
     def transfer(self):
         flat = self.responsibility_combo.currentText()
-        transfer_responsibility(flat=flat)
+        transfer_status = transfer_responsibility(flat=flat)
+
+        reply = QMessageBox()
+        reply.setIcon(QMessageBox.Warning)
+
+        if transfer_status == "Invalid":
+            reply.setText(
+                "The member does not have a Valid E-Mail ID. Cannot send the mail.")
+        elif not transfer_status:
+            reply.setText(
+                "The system cannot access the internet. Make sure you have an active connection, or any firewall"
+                "feature blocking the access.")
+        else:
+            reply.setText("Transfer Successful!")
+
+        reply.setStandardButtons(QMessageBox.Ok)
+        reply.setWindowTitle("INTERNET")
+        reply.exec_()
 
     def remainder(self):
         self.backup_group.setEnabled(False)

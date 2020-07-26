@@ -43,6 +43,8 @@ class finance_entry(QWidget):
         self.current_advance_months = []
 
         self.home_button = home_button
+
+        self.rent = False
         # -- LEVEL TWO GRID
         self.grid = QGridLayout()
         self.grid.setSpacing(20)
@@ -347,6 +349,14 @@ class finance_entry(QWidget):
 
     def set_name(self, flat):
         name = get_name(flat)
+        if name[0] == name[1]:
+            name = name[0]
+
+        else:
+            name = name[1]
+            self.rent = True
+            self.amount_line.setText(str(1600))
+
         self.name_value.setText(str(name))
 
     def add_entry(self):
@@ -371,7 +381,6 @@ class finance_entry(QWidget):
         else:
             ref = ''
 
-        print(fee_month)
         new_receipt = receipt.receipt(date=fix_date(date), flat=flat, month=fee_month, month_till=fee_till,
                                       amount=amount, fine=fine, mode=mode, ref=ref)
         self.disable()
@@ -396,8 +405,13 @@ class finance_entry(QWidget):
         else:
             reply = QMessageBox()
             reply.setIcon(QMessageBox.Warning)
-            reply.setText("The system cannot access the internet. Make sure you have an active connection, or any firewall"
-                          "feature blocking the access.")
+            if email_status == "Invalid":
+                reply.setText(
+                    "The member does not have a Valid E-Mail ID. Cannot send the mail.")
+            else:
+                reply.setText(
+                    "The system cannot access the internet. Make sure you have an active connection, or any firewall"
+                    "feature blocking the access.")
             reply.setStandardButtons(QMessageBox.Retry)
             reply.setWindowTitle("INTERNET")
             reply.exec_()
@@ -471,6 +485,9 @@ class finance_entry(QWidget):
 
             else:
                 amount = 1500
+
+            if self.rent:
+                amount += 100
 
             self.amount_line.setText(str(amount))
             self.amount_line.setToolTip(f"Total months : {amount//1500}")
